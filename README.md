@@ -10,12 +10,13 @@ apps/
 packages/
   client-config/            Zod schema and types for client.config.json, with example configs
   eslint-config/            shared ESLint preset for library packages
+  licence/                  licence schema; Ed25519 signing (`/sign`, builder) and verification (`/verify`, POS)
   pricing/                  pure pricing, discount, tax, rounding, payment and refund functions
   typescript-config/        shared tsconfig presets
 docker-compose.yml          local PostgreSQL (development only)
 ```
 
-`apps/builder`, `packages/licence`, `packages/ui` and `scripts/build-client.ts` arrive in later milestones.
+`apps/builder`, `packages/ui` and `scripts/build-client.ts` arrive in later milestones.
 
 ## Prerequisites
 

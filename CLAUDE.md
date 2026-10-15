@@ -55,7 +55,9 @@ TypeScript (strict) · Next.js App Router · Payload CMS 3 · PostgreSQL (`@payl
 ## Code conventions
 
 - Business logic lives in `packages/*` as pure functions with unit tests. Endpoints and UI call into it.
-- `packages/pricing` keeps 100% unit test coverage.
+- `packages/pricing` keeps 100% unit test coverage (enforced by its Vitest thresholds).
+- Library packages compile with `tsc` to `dist/`; `exports` point `types` at `src/` and `default` at `dist/`. Turbo builds them before dependent `dev`, `test` and `build` tasks.
+- Import licence signing only from `@kiln/licence/sign` (builder) and verification only from `@kiln/licence/verify` (POS); the root `@kiln/licence` entry has no crypto.
 - Validate all external input (config files, request bodies) with Zod.
 - Cashier UI lives under `apps/pos/src/app/(pos)/` and must work with keyboard and barcode scanner alone; touch targets at least 44 px.
 - Prefer small, focused modules; no barrel files that pull server code into client bundles.
@@ -107,7 +109,7 @@ Local development uses PostgreSQL via `docker compose up -d db` (development onl
 
 ## Current status
 
-Milestone M0 (foundation). Roadmap: M0 foundation → M1 config, pricing and licence packages → M2 POS data model and first boot → M3 checkout, payments, shifts, refunds → M4 build script → M5 builder app and remote builds → M6 hardening and first client readiness.
+Milestones M0 (foundation) and M1 (`client-config`, `pricing`, `licence` packages) are done; next is M2. Roadmap: M0 foundation → M1 config, pricing and licence packages → M2 POS data model and first boot → M3 checkout, payments, shifts, refunds → M4 build script → M5 builder app and remote builds → M6 hardening and first client readiness.
 
 ## Out of scope for the MVP
 
