@@ -9,6 +9,7 @@ import { z } from 'zod'
 
 import { hasRole, outletIds, type Role } from '../../access/roles'
 import { isLicenceUsable } from '../../lib/licence'
+import { ACTING_HEADER, verifyActingToken } from '../../lib/pin'
 import type { User } from '../../payload-types'
 
 /** An error with an HTTP status and a stable code the cashier screen can branch on. */
@@ -31,11 +32,19 @@ export const MANAGERS: Role[] = ['admin', 'manager']
 export const money = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)
 export const id = z.number().int().positive()
 
-/**
- * The signed-in user if they hold one of `roles`. Custom endpoints are not authenticated by
- * Payload, so every handler calls this first (CLAUDE.md: Access control).
- */
-export function requireUser(req: PayloadRequest, roles: Role[]): User & { collection: 'users' } {
+export type StaffUser = User & { collection: 'users' }
+
+function assertUsable(user: StaffUser, roles: Role[]) {
+  if (user.mustChangePassword) {
+    throw new PosError(403, 'password_change_required', 'Change your password first')
+  }
+  if (!hasRole(user, ...roles)) {
+    throw new PosError(403, 'forbidden', 'You are not allowed to do this')
+  }
+}
+
+/** The user whose full login started this device session (FR-12). */
+export function requireDeviceUser(req: PayloadRequest, roles: Role[] = STAFF): StaffUser {
   const user = req.user
   if (!user || user.collection !== 'users') {
     throw new PosError(401, 'unauthenticated', 'Sign in first')
@@ -43,20 +52,40 @@ export function requireUser(req: PayloadRequest, roles: Role[]): User & { collec
   if (!isLicenceUsable()) {
     throw new PosError(503, 'unlicensed', 'This POS is not licensed')
   }
-  if (user.mustChangePassword) {
-    throw new PosError(403, 'password_change_required', 'Change your password first')
-  }
-  if (!hasRole(user, ...roles)) {
-    throw new PosError(403, 'forbidden', 'You are not allowed to do this')
-  }
+  assertUsable(user, STAFF)
+  assertUsable(user, roles)
   return user
 }
 
+/**
+ * The staff member acting on this request if they hold one of `roles`: the device user, or the
+ * colleague who took over the till with their PIN (`X-Kiln-Acting-User`, FR-12). Custom endpoints
+ * are not authenticated by Payload, so every handler calls this first (CLAUDE.md: Access control).
+ */
+export async function requireUser(req: PayloadRequest, roles: Role[]): Promise<StaffUser> {
+  const token = req.headers.get(ACTING_HEADER)
+  if (!token) return requireDeviceUser(req, roles)
+
+  const device = requireDeviceUser(req)
+  const claims = verifyActingToken(req.payload.secret, token)
+  if (!claims || claims.deviceUserId !== device.id) {
+    throw new PosError(401, 'acting_user_expired', 'Switch user again')
+  }
+  if (claims.userId === device.id) {
+    assertUsable(device, roles)
+    return device
+  }
+  const acting = await req.payload
+    .findByID({ collection: 'users', id: claims.userId, depth: 0, overrideAccess: true })
+    .catch(() => null)
+  if (!acting) throw new PosError(401, 'acting_user_expired', 'Switch user again')
+  const actingUser: StaffUser = { ...acting, collection: 'users' }
+  assertUsable(actingUser, roles)
+  return actingUser
+}
+
 /** Throws unless the user works at `outlet` (FR-11). Admins work everywhere. */
-export function assertOutletAccess(
-  user: User & { collection: 'users' },
-  outlet: number | { id: number },
-) {
+export function assertOutletAccess(user: StaffUser, outlet: number | { id: number }) {
   const outletId = typeof outlet === 'object' ? outlet.id : outlet
   if (!hasRole(user, 'admin') && !outletIds(user).includes(outletId)) {
     throw new PosError(403, 'outlet_forbidden', 'This belongs to an outlet you do not work at')
