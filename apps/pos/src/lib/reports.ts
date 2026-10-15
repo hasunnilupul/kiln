@@ -199,13 +199,16 @@ export function buildSalesReport(
       .entries()
       .map(([date, f]) => ({ date, ...f }))
       .sort((a, b) => a.date.localeCompare(b.date)),
-    byPaymentMethod: methods.entries().map(([code, m]) => ({
-      code,
-      method: m.method,
-      taken: m.taken,
-      refunded: m.refunded,
-      net: m.taken - m.refunded,
-    })),
+    byPaymentMethod: methods
+      .entries()
+      .map(([code, m]) => ({
+        code,
+        method: m.method,
+        taken: m.taken,
+        refunded: m.refunded,
+        net: m.taken - m.refunded,
+      }))
+      .sort((a, b) => b.taken - a.taken),
     byProduct: products
       .entries()
       .map(([variantId, p]) => ({ variantId, ...p, net: p.total - p.refunded }))
