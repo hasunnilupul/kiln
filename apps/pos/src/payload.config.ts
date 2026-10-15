@@ -24,6 +24,7 @@ import { Users } from './collections/Users'
 import { Branding } from './globals/Branding'
 import { SystemSettings } from './globals/SystemSettings'
 import { health } from './endpoints/health'
+import { catalogueEndpoints } from './endpoints/pos/catalogue'
 import { refundEndpoints } from './endpoints/pos/refunds'
 import { saleEndpoints } from './endpoints/pos/sales'
 import { shiftEndpoints } from './endpoints/pos/shifts'
@@ -50,7 +51,14 @@ export default buildConfig({
       beforeDashboard: ['/components/PasswordChangeNotice#RedirectToAccount'],
     },
   },
-  endpoints: [health, ...shiftEndpoints, ...staffEndpoints, ...saleEndpoints, ...refundEndpoints],
+  endpoints: [
+    health,
+    ...shiftEndpoints,
+    ...staffEndpoints,
+    ...saleEndpoints,
+    ...refundEndpoints,
+    ...catalogueEndpoints,
+  ],
   // Runs after prodMigrations: seeds an empty database from client.config.json (FR-02, FR-03),
   // then verifies licence.json now and every 24 hours (FR-04).
   onInit: async (payload) => {
