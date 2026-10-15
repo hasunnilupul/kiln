@@ -10,7 +10,7 @@
   "branding": {
     "primaryColor": "#0F766E",
     "accentColor": "#F59E0B",
-    "logo": "assets/logo.png",
+    "logo": "assets/logo.svg",
     "receiptFooter": "Thank you!"
   },
   "tax": {

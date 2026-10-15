@@ -114,13 +114,22 @@ export async function seedDatabase(
   if (config.branding.logo) {
     const logoPath = path.resolve(assetsDir, config.branding.logo)
     if (await exists(logoPath)) {
-      const logo = await payload.create({
-        collection: 'media',
-        data: { alt: `${config.client.displayName} logo` },
-        filePath: logoPath,
-        ...write,
-      })
-      logoId = logo.id
+      // The upload goes to R2 or Vercel Blob before the row is written. If storage is not
+      // reachable yet, trade can still start: the admin uploads the logo later.
+      try {
+        const logo = await payload.create({
+          collection: 'media',
+          data: { alt: `${config.client.displayName} logo` },
+          filePath: logoPath,
+          ...write,
+        })
+        logoId = logo.id
+      } catch (error) {
+        payload.logger.error(
+          { err: error },
+          'Could not upload the logo to media storage; seeding without a logo. Check STORAGE_DRIVER settings.',
+        )
+      }
     } else {
       payload.logger.warn(`Logo ${logoPath} not found; seeding without a logo`)
     }
