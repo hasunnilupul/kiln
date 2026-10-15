@@ -17,6 +17,12 @@ importers:
 
   apps/pos:
     dependencies:
+      '@kiln/client-config':
+        specifier: workspace:*
+        version: link:../../packages/client-config
+      '@kiln/pricing':
+        specifier: workspace:*
+        version: link:../../packages/pricing
       '@payloadcms/db-postgres':
         specifier: 3.90.2
         version: 3.90.2(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))

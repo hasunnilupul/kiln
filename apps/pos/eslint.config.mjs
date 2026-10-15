@@ -31,6 +31,7 @@ const eslintConfig = defineConfig([
     'src/payload-types.ts',
     'src/payload-generated-schema.ts',
     'src/app/(payload)/admin/importMap.js',
+    'src/migrations/**',
     // Playwright output:
     'playwright-report/**',
     'test-results/**',
