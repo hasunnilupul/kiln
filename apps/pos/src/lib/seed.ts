@@ -72,7 +72,7 @@ export async function seedDatabase(
   inputs: SeedInputs,
   req: PayloadRequest,
 ): Promise<void> {
-  const { config, adminPassword, assetsDir } = inputs
+  const { config, adminPassword } = inputs
   const write = { overrideAccess: true, req } as const
 
   const taxRateIds = new Map<string, number>()
@@ -110,26 +110,9 @@ export async function seedDatabase(
     }
   }
 
-  let logoId: number | undefined
-  if (config.branding.logo) {
-    const logoPath = path.resolve(assetsDir, config.branding.logo)
-    if (await exists(logoPath)) {
-      const logo = await payload.create({
-        collection: 'media',
-        data: { alt: `${config.client.displayName} logo` },
-        filePath: logoPath,
-        ...write,
-      })
-      logoId = logo.id
-    } else {
-      payload.logger.warn(`Logo ${logoPath} not found; seeding without a logo`)
-    }
-  }
-
   await payload.updateGlobal({
     slug: 'branding',
     data: {
-      logo: logoId,
       primaryColor: config.branding.primaryColor,
       accentColor: config.branding.accentColor,
       receiptHeader: config.branding.receiptHeader,
@@ -211,6 +194,7 @@ export async function seedOnFirstBoot(
   if (isBuildPhase(env)) return 'already-seeded'
 
   const req = await createLocalReq({}, payload)
+  let inputs: SeedInputs | null
   await initTransaction(req)
   try {
     if (!(await isDatabaseEmpty(payload, req))) {
@@ -227,7 +211,7 @@ export async function seedOnFirstBoot(
       return 'not-empty'
     }
 
-    const inputs = await loadSeedInputs(env)
+    inputs = await loadSeedInputs(env)
     if (!inputs) {
       await commitTransaction(req)
       payload.logger.warn(
@@ -242,9 +226,52 @@ export async function seedOnFirstBoot(
       `Seeded ${inputs.config.client.displayName} from ${clientConfigPath(env)}; ` +
         `admin ${inputs.config.admin.email} must change the initial password on first login`,
     )
-    return 'seeded'
   } catch (error) {
     await killTransaction(req)
     throw error
+  }
+
+  await uploadSeedLogo(payload, inputs)
+  return 'seeded'
+}
+
+/**
+ * Uploads the config's logo to media storage and sets it on branding. Runs after the seed is
+ * committed and outside its transaction: an upload to R2 or Vercel Blob is not transactional, and a
+ * failed Payload operation rolls back any transaction it shares. If storage is not reachable yet,
+ * the POS still starts and an admin uploads the logo later.
+ */
+export async function uploadSeedLogo(
+  payload: Payload,
+  { config, assetsDir }: SeedInputs,
+  req?: PayloadRequest,
+): Promise<number | null> {
+  if (!config.branding.logo) return null
+  const logoPath = path.resolve(assetsDir, config.branding.logo)
+  if (!(await exists(logoPath))) {
+    payload.logger.warn(`Logo ${logoPath} not found; starting without a logo`)
+    return null
+  }
+  try {
+    const logo = await payload.create({
+      collection: 'media',
+      data: { alt: `${config.client.displayName} logo` },
+      filePath: logoPath,
+      overrideAccess: true,
+      req,
+    })
+    await payload.updateGlobal({
+      slug: 'branding',
+      data: { logo: logo.id },
+      overrideAccess: true,
+      req,
+    })
+    return logo.id
+  } catch (error) {
+    payload.logger.error(
+      { err: error },
+      'Could not upload the logo to media storage; starting without a logo. Check the STORAGE_DRIVER settings.',
+    )
+    return null
   }
 }

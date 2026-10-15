@@ -1,7 +1,7 @@
 import { sql } from '@payloadcms/db-postgres'
 import type { Endpoint } from 'payload'
 
-import { getLicenceState } from '../lib/licence'
+import { getLicenceState, isLicenceUsable } from '../lib/licence'
 
 /**
  * `GET /api/health`: app, database and licence status for monitoring.
@@ -26,7 +26,8 @@ export const health: Endpoint = {
           ? { status: 'invalid', reason: state.reason, checkedAt: state.checkedAt }
           : { status: state?.status ?? 'unchecked' }
 
-    const healthy = database === 'ok' && licence.status !== 'invalid'
+    // Healthy only when the POS actually serves: an unchecked licence in production does not.
+    const healthy = database === 'ok' && isLicenceUsable()
     return Response.json({ app: 'ok', database, licence }, { status: healthy ? 200 : 503 })
   },
 }

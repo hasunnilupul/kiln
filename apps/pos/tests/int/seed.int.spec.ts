@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { parseClientConfig, type ClientConfigInput } from '@kiln/client-config'
 import config from '@/payload.config'
-import { seedDatabase } from '@/lib/seed'
+import { seedDatabase, uploadSeedLogo } from '@/lib/seed'
 import {
   createLocalReq,
   getPayload,
@@ -78,11 +78,10 @@ beforeAll(async () => {
 
   req = await createLocalReq({}, payload)
   await initTransaction(req)
-  await seedDatabase(
-    payload,
-    { config: parseClientConfig(clientConfig), adminPassword: password, assetsDir },
-    req,
-  )
+  const inputs = { config: parseClientConfig(clientConfig), adminPassword: password, assetsDir }
+  await seedDatabase(payload, inputs, req)
+  // In production the logo is uploaded after the seed commits; here it shares the test transaction.
+  await uploadSeedLogo(payload, inputs, req)
 })
 
 afterAll(async () => {
