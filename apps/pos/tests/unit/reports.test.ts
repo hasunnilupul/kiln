@@ -99,8 +99,8 @@ describe('buildSalesReport (FR-70, FR-71)', () => {
 
   it('splits payment methods with cash net of change and refunds', () => {
     expect(report.byPaymentMethod).toEqual([
-      { code: 'cash', method: 'Cash', taken: 1400, refunded: 450, net: 950 },
       { code: 'card', method: 'Card', taken: 1500, refunded: 0, net: 1500 },
+      { code: 'cash', method: 'Cash', taken: 1400, refunded: 450, net: 950 },
     ])
   })
 

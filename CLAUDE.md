@@ -86,7 +86,7 @@ pnpm build                   # build all apps and packages
 pnpm lint                    # ESLint
 pnpm typecheck               # tsc --noEmit across workspaces (turbo task: check-types)
 pnpm test                    # Vitest tests (POS integration tests need the database)
-pnpm test:e2e                # Playwright end-to-end tests
+pnpm test:e2e                # Playwright e2e: own server on :3100 and a fresh <db>_e2e database; stop pnpm dev first
 pnpm format                  # Prettier write; format:check in CI
 pnpm --filter pos payload migrate:create <name>   # generate a migration after schema changes
 pnpm licence:dev             # throwaway localhost licence + public key for development
@@ -113,7 +113,7 @@ Local development uses PostgreSQL via `docker compose up -d db` (development onl
 
 ## Current status
 
-Milestones M0 (foundation), M1 (`client-config`, `pricing`, `licence` packages) and M2 (POS data model, storage, migrations, first-boot seeding, licence checks) are done; next is M3. Roadmap: M0 foundation → M1 config, pricing and licence packages → M2 POS data model and first boot → M3 checkout, payments, shifts, refunds → M4 build script → M5 builder app and remote builds → M6 hardening and first client readiness.
+Milestones M0 (foundation), M1 (`client-config`, `pricing`, `licence` packages) M2 (POS data model, storage, migrations, first-boot seeding, licence checks) and M3 (shifts, checkout, payments, refunds, receipts, reports, cashier screen) are done; next is M4. Roadmap: M0 foundation → M1 config, pricing and licence packages → M2 POS data model and first boot → M3 checkout, payments, shifts, refunds → M4 build script → M5 builder app and remote builds → M6 hardening and first client readiness.
 
 ## Out of scope for the MVP
 

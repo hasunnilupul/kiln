@@ -47,3 +47,42 @@ jobs:
             git status --porcelain -- apps/pos/src/migrations
             exit 1
           fi
+
+  # A full trading day in a real browser against a freshly seeded POS (M3 exit criterion).
+  e2e:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: kiln
+          POSTGRES_PASSWORD: kiln
+          POSTGRES_DB: kiln_pos
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      DATABASE_URI: postgres://kiln:kiln@localhost:5432/kiln_pos
+      PAYLOAD_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter pos exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            apps/pos/playwright-report
+            apps/pos/test-results
+          retention-days: 7

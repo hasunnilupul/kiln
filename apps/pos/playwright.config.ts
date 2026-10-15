@@ -1,41 +1,40 @@
 import { defineConfig, devices } from '@playwright/test'
 
-/**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-import 'dotenv/config'
+import { baseURL, e2eEnv } from './tests/e2e/env'
 
-/**
- * See https://playwright.dev/docs/test-configuration.
- */
+// Test workers use the same throwaway database as the server they drive.
+Object.assign(process.env, e2eEnv)
+
+/** See https://playwright.dev/docs/test-configuration. */
 export default defineConfig({
   testDir: './tests/e2e',
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
+  // One trading day is a sequence; run files one after another against one server.
+  fullyParallel: false,
+  workers: 1,
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
-  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+  retries: process.env.CI ? 1 : 0,
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'html',
+  timeout: 90_000,
+  expect: { timeout: 15_000 },
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    // baseURL: 'http://localhost:3000',
-
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
+    baseURL,
     trace: 'on-first-retry',
   },
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'], channel: 'chromium' },
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: 'chromium',
+        viewport: { width: 1366, height: 768 },
+      },
     },
   ],
   webServer: {
-    command: 'pnpm dev',
-    reuseExistingServer: true,
-    url: 'http://localhost:3000',
+    command: 'node --import=tsx/esm tests/e2e/server.ts',
+    url: `${baseURL}/api/health`,
+    // Always start fresh: the server recreates the e2e database.
+    reuseExistingServer: false,
+    timeout: 180_000,
   },
 })

@@ -55,4 +55,6 @@ In development the schema is pushed straight to the database. After a schema cha
 
 Library packages under `packages/` compile with `tsc` to `dist/`; Turborepo builds them before the apps and tests that depend on them.
 
+End-to-end tests (`pnpm test:e2e`) start their own POS on port 3100 (`E2E_PORT`) against a fresh `<database>_e2e` database, seeded from the example config, and drive a full trading day in Chromium. Stop `pnpm dev` first: Next.js runs one dev server per app. Install the browser once with `pnpm --filter pos exec playwright install chromium`.
+
 CI (`.github/workflows/ci.yml`) runs format check, lint, typecheck and tests against a PostgreSQL service container.
