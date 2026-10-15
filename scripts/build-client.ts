@@ -223,9 +223,27 @@ try {
   cpSync(path.join(app, 'public'), path.join(pkg, 'public'), { recursive: true })
 
   // No native modules (one zip for every OS), no source, tests or maps.
-  for (const dir of ['node_modules/sharp', 'node_modules/@img', '.next/cache']) {
+  // Development files the tracer picks up (sources, styles, tool configs) are compiled into the
+  // bundle already; ship none of them.
+  for (const dir of [
+    'node_modules/sharp',
+    'node_modules/@img',
+    '.next/cache',
+    'src',
+    'tests',
+    'tsconfig.json',
+    'eslint.config.mjs',
+    'components.json',
+    'postcss.config.mjs',
+    'next-env.d.ts',
+  ]) {
     rmSync(path.join(pkg, dir), { recursive: true, force: true })
   }
+  // server.js is an ES module; nothing else from the app's package.json is needed at runtime.
+  writeFileSync(
+    path.join(pkg, 'package.json'),
+    `${JSON.stringify({ name: `${config.client.slug}-pos`, private: true, type: 'module' }, null, 2)}\n`,
+  )
   for (const file of walk(pkg)) {
     const name = path.basename(file)
     const isSource = /\.(tsx?|mts|cts)$/.test(name) && !/\.d\.[mc]?ts$/.test(name)
