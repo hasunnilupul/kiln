@@ -56,6 +56,14 @@ export function licensedModules(enabled: ModulesConfig): ModulesConfig {
   return { inventory: false, customers: false, discounts: false, multiOutlet: false }
 }
 
+/** Registers allowed to open shifts, or null when unlimited (unlicensed development). */
+export function licensedRegisterLimit(): number | null {
+  const state = getLicenceState()
+  if (state?.status === 'valid') return state.licence.maxRegisters
+  if (state?.status === 'unlicensed-development' || (!state && !isProductionRuntime())) return null
+  return 0
+}
+
 export interface LicenceInputs {
   /** Text of `licence.json`, or null when there is none. */
   fileText: string | null
