@@ -26,6 +26,7 @@ import { SystemSettings } from './globals/SystemSettings'
 import { health } from './endpoints/health'
 import { catalogueEndpoints } from './endpoints/pos/catalogue'
 import { refundEndpoints } from './endpoints/pos/refunds'
+import { reportEndpoints } from './endpoints/pos/reports'
 import { saleEndpoints } from './endpoints/pos/sales'
 import { shiftEndpoints } from './endpoints/pos/shifts'
 import { staffEndpoints } from './endpoints/pos/staff'
@@ -49,6 +50,7 @@ export default buildConfig({
         '/components/PasswordChangeNotice#PasswordChangeBanner',
       ],
       beforeDashboard: ['/components/PasswordChangeNotice#RedirectToAccount'],
+      afterNavLinks: ['/components/ReportsLink#ReportsLink'],
     },
   },
   endpoints: [
@@ -58,6 +60,7 @@ export default buildConfig({
     ...saleEndpoints,
     ...refundEndpoints,
     ...catalogueEndpoints,
+    ...reportEndpoints,
   ],
   // Runs after prodMigrations: seeds an empty database from client.config.json (FR-02, FR-03),
   // then verifies licence.json now and every 24 hours (FR-04).

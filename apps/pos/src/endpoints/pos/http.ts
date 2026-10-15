@@ -130,6 +130,8 @@ export function posEndpoint<Schema extends z.ZodType = z.ZodUndefined>(
       try {
         const body = options.body ? options.body.parse(await readBody(req)) : undefined
         const result = await options.handler(req, body as z.output<Schema>)
+        // Handlers may answer with their own Response, e.g. a CSV download.
+        if (result instanceof Response) return result
         return Response.json(result, { status: options.status ?? 200 })
       } catch (error) {
         return errorResponse(req, error)
