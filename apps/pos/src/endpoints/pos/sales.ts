@@ -337,6 +337,11 @@ export const adjustStock = posEndpoint({
         .catch(() => {
           throw new PosError(404, 'item_not_found', 'Item not found')
         })
+      await req.payload
+        .findByID({ collection: 'outlets', id: body.outletId, depth: 0, ...local(req) })
+        .catch(() => {
+          throw new PosError(404, 'outlet_not_found', 'Outlet not found')
+        })
       const quantity = await applyStockChange(req, {
         variantId: body.variantId,
         outletId: body.outletId,
