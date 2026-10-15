@@ -233,8 +233,13 @@ try {
     else if (name.endsWith('.node'))
       fail(`Native module in the package: ${path.relative(pkg, file)}`)
   }
-  for (const kiln of readdirSync(path.join(pkg, 'node_modules/@kiln'), { withFileTypes: true })) {
-    rmSync(path.join(pkg, 'node_modules/@kiln', kiln.name, 'src'), { recursive: true, force: true })
+  // Workspace packages are usually bundled into the server chunks; if any were traced as
+  // dependencies, ship only their compiled dist.
+  const kilnModules = path.join(pkg, 'node_modules/@kiln')
+  if (existsSync(kilnModules)) {
+    for (const kiln of readdirSync(kilnModules)) {
+      rmSync(path.join(kilnModules, kiln, 'src'), { recursive: true, force: true })
+    }
   }
 
   // 7. Obfuscate the compiled server code. Client bundles stay minified only.
