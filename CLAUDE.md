@@ -101,7 +101,7 @@ Local development uses PostgreSQL via `docker compose up -d db` (development onl
 | `DATABASE_URI` | PostgreSQL connection string |
 | `PAYLOAD_SECRET` | At least 32 random bytes |
 | `INITIAL_ADMIN_PASSWORD` | First-boot admin password; forced change on first login |
-| `STORAGE_DRIVER` | `r2` or `vercel-blob` |
+| `STORAGE_DRIVER` | `r2` or `vercel-blob`; unset in development stores media on local disk, and a production server refuses to start without one |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Media storage when `STORAGE_DRIVER=r2` |
 | `BLOB_READ_WRITE_TOKEN` | Media storage when `STORAGE_DRIVER=vercel-blob` |
 | `PUBLIC_URL` | Base URL; must match the licence's allowed hosts |

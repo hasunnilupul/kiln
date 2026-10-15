@@ -23,6 +23,7 @@ import { TaxRates } from './collections/TaxRates'
 import { Users } from './collections/Users'
 import { Branding } from './globals/Branding'
 import { SystemSettings } from './globals/SystemSettings'
+import { resolveStorage, storagePlugins } from './lib/storage'
 import { migrations } from './migrations'
 
 const filename = fileURLToPath(import.meta.url)
@@ -68,5 +69,5 @@ export default buildConfig({
     // serving requests (FR-01). Generate one with `pnpm --filter pos payload migrate:create`.
     prodMigrations: migrations,
   }),
-  plugins: [],
+  plugins: [...storagePlugins(resolveStorage(process.env))],
 })
