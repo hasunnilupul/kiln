@@ -25,3 +25,13 @@ export {
 } from './refunds.js'
 export { settlePayments, type PaymentSettlement, type Tender } from './payments.js'
 export { currencyMinorDigits, formatMoney, parseMoneyInput } from './money.js'
+export {
+  summariseShift,
+  type CashMovementInput,
+  type ShiftInput,
+  type ShiftMethodTotal,
+  type ShiftPayment,
+  type ShiftRefundInput,
+  type ShiftSaleInput,
+  type ShiftSummary,
+} from './shift.js'
