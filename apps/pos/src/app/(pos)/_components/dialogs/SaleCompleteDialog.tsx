@@ -5,10 +5,11 @@ import React from 'react'
 import { Button } from '@/components/ui/button'
 
 import type { Money } from '../../_lib/money'
+import { printReceipt } from '../../_lib/print'
 import type { CompletedSale } from './PaymentDialog'
 import { Modal } from './Modal'
 
-/** Confirms the sale with its number and change due. */
+/** Confirms the sale with its number and change due, and prints the receipt (FR-43). */
 export function SaleCompleteDialog({
   sale,
   money,
@@ -28,9 +29,14 @@ export function SaleCompleteDialog({
           {money.format(sale.change)}
         </dd>
       </dl>
-      <Button autoFocus className="h-12 w-full" onClick={onClose}>
-        New sale
-      </Button>
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="outline" className="h-12" onClick={() => printReceipt(sale.id)}>
+          Print receipt
+        </Button>
+        <Button autoFocus className="h-12" onClick={onClose}>
+          New sale
+        </Button>
+      </div>
     </Modal>
   )
 }
