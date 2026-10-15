@@ -19,3 +19,6 @@ pnpm-debug.log*
 
 # local licence for development (scripts/dev-licence.ts)
 .licence-dev/
+
+# client builds (scripts/build-client.ts)
+dist-clients/

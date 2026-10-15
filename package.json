@@ -6,12 +6,13 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "typecheck": "turbo run check-types",
+    "typecheck": "turbo run check-types && tsc -p scripts",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "licence:dev": "tsx scripts/dev-licence.ts"
+    "licence:dev": "tsx scripts/dev-licence.ts",
+    "build:client": "tsx scripts/build-client.ts"
   },
   "packageManager": "pnpm@10.34.6",
   "engines": {
@@ -20,8 +21,14 @@
   "devDependencies": {
     "@kiln/client-config": "workspace:*",
     "@kiln/licence": "workspace:*",
+    "@kiln/typescript-config": "workspace:*",
+    "@types/archiver": "^8.0.0",
+    "@types/node": "22.19.9",
+    "archiver": "^8.0.0",
+    "javascript-obfuscator": "^5.9.0",
     "prettier": "3.9.10",
     "tsx": "4.23.15",
-    "turbo": "^2.11.8"
+    "turbo": "^2.11.8",
+    "typescript": "5.7.3"
   }
 }

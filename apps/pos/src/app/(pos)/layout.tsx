@@ -8,6 +8,8 @@ export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'POS',
+  // Replaced per client by the build script; lets tills install the POS as an app.
+  manifest: '/manifest.webmanifest',
 }
 
 export default function PosLayout({ children }: { children: React.ReactNode }) {
