@@ -3,6 +3,8 @@ import { vercelBlobStorage } from '@payloadcms/storage-vercel-blob'
 import type { Plugin } from 'payload'
 import { z } from 'zod'
 
+import { isProductionRuntime } from './runtime'
+
 export const STORAGE_DRIVERS = ['r2', 'vercel-blob', 'local'] as const
 
 export type StorageSettings =
@@ -28,11 +30,6 @@ const r2Env = z.object({
 const vercelBlobEnv = z.object({
   BLOB_READ_WRITE_TOKEN: required,
 })
-
-/** True when serving a production build (not while `next build` compiles it). */
-function isProductionRuntime(env: NodeJS.ProcessEnv): boolean {
-  return env.NODE_ENV === 'production' && env.NEXT_PHASE !== 'phase-production-build'
-}
 
 function describeIssues(error: z.ZodError): string {
   return error.issues.map((issue) => `${issue.path.join('.')} ${issue.message}`).join('; ')

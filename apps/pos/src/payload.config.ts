@@ -23,6 +23,7 @@ import { TaxRates } from './collections/TaxRates'
 import { Users } from './collections/Users'
 import { Branding } from './globals/Branding'
 import { SystemSettings } from './globals/SystemSettings'
+import { seedOnFirstBoot } from './lib/seed'
 import { resolveStorage, storagePlugins } from './lib/storage'
 import { migrations } from './migrations'
 
@@ -35,6 +36,14 @@ export default buildConfig({
     importMap: {
       baseDir: path.resolve(dirname),
     },
+    components: {
+      header: ['/components/PasswordChangeNotice#PasswordChangeBanner'],
+      beforeDashboard: ['/components/PasswordChangeNotice#RedirectToAccount'],
+    },
+  },
+  // Runs after prodMigrations; seeds an empty database from client.config.json (FR-02, FR-03).
+  onInit: async (payload) => {
+    await seedOnFirstBoot(payload)
   },
   collections: [
     Sales,

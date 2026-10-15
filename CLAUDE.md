@@ -104,6 +104,7 @@ Local development uses PostgreSQL via `docker compose up -d db` (development onl
 | `STORAGE_DRIVER` | `r2` or `vercel-blob`; unset in development stores media on local disk, and a production server refuses to start without one |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Media storage when `STORAGE_DRIVER=r2` |
 | `BLOB_READ_WRITE_TOKEN` | Media storage when `STORAGE_DRIVER=vercel-blob` |
+| `CLIENT_CONFIG_PATH` | Optional; defaults to `client.config.json` in the working directory |
 | `PUBLIC_URL` | Base URL; must match the licence's allowed hosts |
 | `PORT` | Defaults to 3000 |
 

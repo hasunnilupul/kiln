@@ -29,11 +29,14 @@ docker-compose.yml          local PostgreSQL (development only)
 ```bash
 pnpm install
 docker compose up -d db
-cp apps/pos/.env.example apps/pos/.env   # then set PAYLOAD_SECRET
+cp apps/pos/.env.example apps/pos/.env   # then set PAYLOAD_SECRET and INITIAL_ADMIN_PASSWORD
+cp packages/client-config/examples/acme-mart.client.config.json apps/pos/client.config.json
 pnpm dev --filter pos
 ```
 
-Open `http://localhost:3000/admin` and create the first user. If port 3000 is taken, Next.js picks the next free port; set `PORT` to choose one.
+On first start the POS seeds the empty database from `client.config.json` (settings, branding, tax rates, payment methods, outlets, registers) and creates the admin from its `admin` section. Open `http://localhost:3000/admin`, sign in with that email and `INITIAL_ADMIN_PASSWORD`, and set a new password when asked. If port 3000 is taken, Next.js picks the next free port; set `PORT` to choose one.
+
+In development the schema is pushed straight to the database. After a schema change, generate its migration with `pnpm --filter pos payload migrate:create <name>`; production servers run pending migrations on startup.
 
 ## Scripts
 
