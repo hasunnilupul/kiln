@@ -16,3 +16,6 @@ node_modules/
 # debug
 npm-debug.log*
 pnpm-debug.log*
+
+# local licence for development (scripts/dev-licence.ts)
+.licence-dev/

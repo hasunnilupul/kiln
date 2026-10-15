@@ -89,6 +89,7 @@ pnpm test                    # Vitest tests (POS integration tests need the data
 pnpm test:e2e                # Playwright end-to-end tests
 pnpm format                  # Prettier write; format:check in CI
 pnpm --filter pos payload migrate:create <name>   # generate a migration after schema changes
+pnpm licence:dev             # throwaway localhost licence + public key for development
 pnpm build:client --config <path/to/client.config.json>   # build a client zip locally (M4)
 ```
 
@@ -106,11 +107,13 @@ Local development uses PostgreSQL via `docker compose up -d db` (development onl
 | `BLOB_READ_WRITE_TOKEN` | Media storage when `STORAGE_DRIVER=vercel-blob` |
 | `CLIENT_CONFIG_PATH` | Optional; defaults to `client.config.json` in the working directory |
 | `PUBLIC_URL` | Base URL; must match the licence's allowed hosts |
+| `LICENCE_PATH` | Optional; defaults to `licence.json` in the working directory |
+| `LICENCE_PUBLIC_KEY` | Development only (from `pnpm licence:dev`); production uses the key embedded in `src/lib/licence-public-key.ts` |
 | `PORT` | Defaults to 3000 |
 
 ## Current status
 
-Milestones M0 (foundation) and M1 (`client-config`, `pricing`, `licence` packages) are done; next is M2. Roadmap: M0 foundation → M1 config, pricing and licence packages → M2 POS data model and first boot → M3 checkout, payments, shifts, refunds → M4 build script → M5 builder app and remote builds → M6 hardening and first client readiness.
+Milestones M0 (foundation), M1 (`client-config`, `pricing`, `licence` packages) and M2 (POS data model, storage, migrations, first-boot seeding, licence checks) are done; next is M3. Roadmap: M0 foundation → M1 config, pricing and licence packages → M2 POS data model and first boot → M3 checkout, payments, shifts, refunds → M4 build script → M5 builder app and remote builds → M6 hardening and first client readiness.
 
 ## Out of scope for the MVP
 

@@ -1,12 +1,18 @@
 import type { Access, FieldAccess, PayloadRequest, Where } from 'payload'
 
+import { isLicenceUsable } from '../lib/licence'
+
 export const ROLES = ['admin', 'manager', 'cashier'] as const
 export type Role = (typeof ROLES)[number]
 
 type RequestUser = PayloadRequest['user']
 
-/** The signed-in staff member, or null. Users who must change their password get no access (FR-03). */
+/**
+ * The signed-in staff member, or null. Nobody gets access while the licence is invalid (FR-04),
+ * and users who must change their password get none until they do (FR-03).
+ */
 function activeUser(user: RequestUser) {
+  if (!isLicenceUsable()) return null
   return user && user.collection === 'users' && !user.mustChangePassword ? user : null
 }
 

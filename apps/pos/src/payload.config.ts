@@ -23,6 +23,8 @@ import { TaxRates } from './collections/TaxRates'
 import { Users } from './collections/Users'
 import { Branding } from './globals/Branding'
 import { SystemSettings } from './globals/SystemSettings'
+import { health } from './endpoints/health'
+import { startLicenceChecks } from './lib/licence'
 import { seedOnFirstBoot } from './lib/seed'
 import { resolveStorage, storagePlugins } from './lib/storage'
 import { migrations } from './migrations'
@@ -37,13 +39,19 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
     components: {
-      header: ['/components/PasswordChangeNotice#PasswordChangeBanner'],
+      header: [
+        '/components/LicenceNotice#LicenceBanner',
+        '/components/PasswordChangeNotice#PasswordChangeBanner',
+      ],
       beforeDashboard: ['/components/PasswordChangeNotice#RedirectToAccount'],
     },
   },
-  // Runs after prodMigrations; seeds an empty database from client.config.json (FR-02, FR-03).
+  endpoints: [health],
+  // Runs after prodMigrations: seeds an empty database from client.config.json (FR-02, FR-03),
+  // then verifies licence.json now and every 24 hours (FR-04).
   onInit: async (payload) => {
     await seedOnFirstBoot(payload)
+    await startLicenceChecks(payload)
   },
   collections: [
     Sales,
