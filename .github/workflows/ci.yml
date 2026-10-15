@@ -38,3 +38,12 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # Every schema change ships with its migration: generating one now must produce nothing.
+      - name: Check migrations match the Payload config
+        run: |
+          pnpm --filter pos payload migrate:create schema-drift --skip-empty
+          if [ -n "$(git status --porcelain -- apps/pos/src/migrations)" ]; then
+            echo "::error::Schema changed without a migration. Run: pnpm --filter pos payload migrate:create <name>"
+            git status --porcelain -- apps/pos/src/migrations
+            exit 1
+          fi

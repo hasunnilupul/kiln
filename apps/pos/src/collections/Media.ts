@@ -1,14 +1,18 @@
 import type { CollectionConfig } from 'payload'
 
-import { authenticated } from '../access/authenticated'
+import { isAdmin, isManager, isStaff } from '../access/roles'
 
+/** Logos and product images, stored in R2 or Vercel Blob. Resized client-side; no `sharp`. */
 export const Media: CollectionConfig = {
   slug: 'media',
+  admin: {
+    group: 'Catalogue',
+  },
   access: {
-    create: authenticated,
-    read: authenticated,
-    update: authenticated,
-    delete: authenticated,
+    read: isStaff,
+    create: isManager,
+    update: isManager,
+    delete: isAdmin,
   },
   fields: [
     {
@@ -17,5 +21,7 @@ export const Media: CollectionConfig = {
       required: true,
     },
   ],
-  upload: true,
+  upload: {
+    mimeTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'],
+  },
 }

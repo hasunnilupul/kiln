@@ -67,17 +67,51 @@ export interface Config {
   };
   blocks: {};
   collections: {
-    users: User;
+    sales: Sale;
+    refunds: Refund;
+    shifts: Shift;
+    'cash-movements': CashMovement;
+    customers: Customer;
+    products: Product;
+    'product-variants': ProductVariant;
+    categories: Category;
     media: Media;
+    'stock-levels': StockLevel;
+    'stock-movements': StockMovement;
+    users: User;
+    outlets: Outlet;
+    registers: Register;
+    'tax-rates': TaxRate;
+    'payment-methods': PaymentMethod;
+    'audit-log': AuditLog;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
   };
-  collectionsJoins: {};
+  collectionsJoins: {
+    products: {
+      variants: 'product-variants';
+    };
+  };
   collectionsSelect: {
-    users: UsersSelect<false> | UsersSelect<true>;
+    sales: SalesSelect<false> | SalesSelect<true>;
+    refunds: RefundsSelect<false> | RefundsSelect<true>;
+    shifts: ShiftsSelect<false> | ShiftsSelect<true>;
+    'cash-movements': CashMovementsSelect<false> | CashMovementsSelect<true>;
+    customers: CustomersSelect<false> | CustomersSelect<true>;
+    products: ProductsSelect<false> | ProductsSelect<true>;
+    'product-variants': ProductVariantsSelect<false> | ProductVariantsSelect<true>;
+    categories: CategoriesSelect<false> | CategoriesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    'stock-levels': StockLevelsSelect<false> | StockLevelsSelect<true>;
+    'stock-movements': StockMovementsSelect<false> | StockMovementsSelect<true>;
+    users: UsersSelect<false> | UsersSelect<true>;
+    outlets: OutletsSelect<false> | OutletsSelect<true>;
+    registers: RegistersSelect<false> | RegistersSelect<true>;
+    'tax-rates': TaxRatesSelect<false> | TaxRatesSelect<true>;
+    'payment-methods': PaymentMethodsSelect<false> | PaymentMethodsSelect<true>;
+    'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -87,8 +121,14 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: null;
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    'system-settings': SystemSetting;
+    branding: Branding;
+  };
+  globalsSelect: {
+    'system-settings': SystemSettingsSelect<false> | SystemSettingsSelect<true>;
+    branding: BrandingSelect<false> | BrandingSelect<true>;
+  };
   locale: null;
   widgets: {
     collections: CollectionsWidget;
@@ -119,10 +159,126 @@ export interface UserAuthOperations {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sales".
+ */
+export interface Sale {
+  id: number;
+  /**
+   * Register code and sale number, e.g. R1-000042. Printed as the receipt barcode.
+   */
+  receiptNumber: string;
+  /**
+   * Sequential per register.
+   */
+  number: number;
+  register: number | Register;
+  outlet: number | Outlet;
+  shift: number | Shift;
+  cashier: number | User;
+  customer?: (number | null) | Customer;
+  status: 'completed';
+  completedAt: string;
+  /**
+   * Tax basis of the unit prices at the time of sale.
+   */
+  pricesIncludeTax: boolean;
+  lines: {
+    variant: number | ProductVariant;
+    name: string;
+    sku: string;
+    unitPrice: number;
+    quantity: number;
+    taxRatePercent: number;
+    gross: number;
+    lineDiscount: number;
+    cartDiscount: number;
+    tax: number;
+    total: number;
+    id?: string | null;
+  }[];
+  subtotal: number;
+  discountTotal: number;
+  taxTotal: number;
+  total: number;
+  payments: {
+    paymentMethod: number | PaymentMethod;
+    methodCode: string;
+    methodLabel: string;
+    methodType: 'cash' | 'card_external' | 'qr' | 'other';
+    amount: number;
+    reference?: string | null;
+    id?: string | null;
+  }[];
+  change: number;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "registers".
+ */
+export interface Register {
+  id: number;
+  code: string;
+  name: string;
+  outlet: number | Outlet;
+  nextSaleNumber: number;
+  active?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "outlets".
+ */
+export interface Outlet {
+  id: number;
+  code: string;
+  name: string;
+  address?: string | null;
+  active?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "shifts".
+ */
+export interface Shift {
+  id: number;
+  register: number | Register;
+  outlet: number | Outlet;
+  cashier: number | User;
+  status: 'open' | 'closed';
+  openedAt: string;
+  openingFloat: number;
+  closedAt?: string | null;
+  expectedCash?: number | null;
+  countedCash?: number | null;
+  /**
+   * Counted minus expected cash.
+   */
+  variance?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
   id: number;
+  name: string;
+  role: 'admin' | 'manager' | 'cashier';
+  /**
+   * Outlets this user works in. Admins see every outlet.
+   */
+  outlets?: (number | Outlet)[] | null;
+  /**
+   * Until the user changes their password, they can only edit their own account.
+   */
+  mustChangePassword?: boolean | null;
+  pinHash?: string | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -145,6 +301,89 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "customers".
+ */
+export interface Customer {
+  id: number;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "product-variants".
+ */
+export interface ProductVariant {
+  id: number;
+  product: number | Product;
+  /**
+   * e.g. "Large / Blue", or the product name for a simple product.
+   */
+  name: string;
+  sku: string;
+  barcodes?:
+    | {
+        code: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Minor units (cents). Includes tax if prices include tax in settings.
+   */
+  price: number;
+  /**
+   * Minor units (cents). Optional.
+   */
+  cost?: number | null;
+  active?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "products".
+ */
+export interface Product {
+  id: number;
+  name: string;
+  sku: string;
+  category?: (number | null) | Category;
+  image?: (number | null) | Media;
+  taxRate: number | TaxRate;
+  /**
+   * Sold in variants such as size or colour (FR-21).
+   */
+  hasVariants?: boolean | null;
+  active?: boolean | null;
+  variants?: {
+    docs?: (number | ProductVariant)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "categories".
+ */
+export interface Category {
+  id: number;
+  name: string;
+  parent?: (number | null) | Category;
+  sortOrder?: number | null;
+  /**
+   * Tile colour on the checkout grid, e.g. #0F766E.
+   */
+  colour?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".
  */
 export interface Media {
@@ -161,6 +400,150 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tax-rates".
+ */
+export interface TaxRate {
+  id: number;
+  code: string;
+  name: string;
+  ratePercent: number;
+  active?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-methods".
+ */
+export interface PaymentMethod {
+  id: number;
+  code: string;
+  label: string;
+  type: 'cash' | 'card_external' | 'qr' | 'other';
+  enabled?: boolean | null;
+  /**
+   * Cashier must enter a reference, e.g. the card approval code (FR-41).
+   */
+  requiresReference?: boolean | null;
+  sortOrder?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "refunds".
+ */
+export interface Refund {
+  id: number;
+  sale: number | Sale;
+  outlet: number | Outlet;
+  register: number | Register;
+  /**
+   * Shift the payout was made from.
+   */
+  shift: number | Shift;
+  lines: {
+    saleLineId: string;
+    variant: number | ProductVariant;
+    name: string;
+    sku: string;
+    quantity: number;
+    taxRatePercent: number;
+    tax: number;
+    total: number;
+    restock: boolean;
+    id?: string | null;
+  }[];
+  taxTotal: number;
+  total: number;
+  payouts: {
+    paymentMethod: number | PaymentMethod;
+    methodCode: string;
+    methodLabel: string;
+    methodType: 'cash' | 'card_external' | 'qr' | 'other';
+    amount: number;
+    reference?: string | null;
+    id?: string | null;
+  }[];
+  processedBy: number | User;
+  approvedBy: number | User;
+  reason: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cash-movements".
+ */
+export interface CashMovement {
+  id: number;
+  shift: number | Shift;
+  outlet: number | Outlet;
+  type: 'in' | 'out';
+  amount: number;
+  reason: string;
+  user: number | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stock-levels".
+ */
+export interface StockLevel {
+  id: number;
+  variant: number | ProductVariant;
+  outlet: number | Outlet;
+  quantity: number;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stock-movements".
+ */
+export interface StockMovement {
+  id: number;
+  variant: number | ProductVariant;
+  outlet: number | Outlet;
+  delta: number;
+  type: 'initial' | 'sale' | 'refund' | 'adjustment';
+  /**
+   * Receipt number of the sale or refund, if any.
+   */
+  reference?: string | null;
+  user: number | User;
+  reason?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-log".
+ */
+export interface AuditLog {
+  id: number;
+  /**
+   * Empty for system actions such as first-boot seeding.
+   */
+  actor?: (number | null) | User;
+  action: string;
+  entity: string;
+  entityId?: string | null;
+  data?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -187,12 +570,72 @@ export interface PayloadLockedDocument {
   id: number;
   document?:
     | ({
-        relationTo: 'users';
-        value: number | User;
+        relationTo: 'sales';
+        value: number | Sale;
+      } | null)
+    | ({
+        relationTo: 'refunds';
+        value: number | Refund;
+      } | null)
+    | ({
+        relationTo: 'shifts';
+        value: number | Shift;
+      } | null)
+    | ({
+        relationTo: 'cash-movements';
+        value: number | CashMovement;
+      } | null)
+    | ({
+        relationTo: 'customers';
+        value: number | Customer;
+      } | null)
+    | ({
+        relationTo: 'products';
+        value: number | Product;
+      } | null)
+    | ({
+        relationTo: 'product-variants';
+        value: number | ProductVariant;
+      } | null)
+    | ({
+        relationTo: 'categories';
+        value: number | Category;
       } | null)
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'stock-levels';
+        value: number | StockLevel;
+      } | null)
+    | ({
+        relationTo: 'stock-movements';
+        value: number | StockMovement;
+      } | null)
+    | ({
+        relationTo: 'users';
+        value: number | User;
+      } | null)
+    | ({
+        relationTo: 'outlets';
+        value: number | Outlet;
+      } | null)
+    | ({
+        relationTo: 'registers';
+        value: number | Register;
+      } | null)
+    | ({
+        relationTo: 'tax-rates';
+        value: number | TaxRate;
+      } | null)
+    | ({
+        relationTo: 'payment-methods';
+        value: number | PaymentMethod;
+      } | null)
+    | ({
+        relationTo: 'audit-log';
+        value: number | AuditLog;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -238,9 +681,242 @@ export interface PayloadMigration {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sales_select".
+ */
+export interface SalesSelect<T extends boolean = true> {
+  receiptNumber?: T;
+  number?: T;
+  register?: T;
+  outlet?: T;
+  shift?: T;
+  cashier?: T;
+  customer?: T;
+  status?: T;
+  completedAt?: T;
+  pricesIncludeTax?: T;
+  lines?:
+    | T
+    | {
+        variant?: T;
+        name?: T;
+        sku?: T;
+        unitPrice?: T;
+        quantity?: T;
+        taxRatePercent?: T;
+        gross?: T;
+        lineDiscount?: T;
+        cartDiscount?: T;
+        tax?: T;
+        total?: T;
+        id?: T;
+      };
+  subtotal?: T;
+  discountTotal?: T;
+  taxTotal?: T;
+  total?: T;
+  payments?:
+    | T
+    | {
+        paymentMethod?: T;
+        methodCode?: T;
+        methodLabel?: T;
+        methodType?: T;
+        amount?: T;
+        reference?: T;
+        id?: T;
+      };
+  change?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "refunds_select".
+ */
+export interface RefundsSelect<T extends boolean = true> {
+  sale?: T;
+  outlet?: T;
+  register?: T;
+  shift?: T;
+  lines?:
+    | T
+    | {
+        saleLineId?: T;
+        variant?: T;
+        name?: T;
+        sku?: T;
+        quantity?: T;
+        taxRatePercent?: T;
+        tax?: T;
+        total?: T;
+        restock?: T;
+        id?: T;
+      };
+  taxTotal?: T;
+  total?: T;
+  payouts?:
+    | T
+    | {
+        paymentMethod?: T;
+        methodCode?: T;
+        methodLabel?: T;
+        methodType?: T;
+        amount?: T;
+        reference?: T;
+        id?: T;
+      };
+  processedBy?: T;
+  approvedBy?: T;
+  reason?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "shifts_select".
+ */
+export interface ShiftsSelect<T extends boolean = true> {
+  register?: T;
+  outlet?: T;
+  cashier?: T;
+  status?: T;
+  openedAt?: T;
+  openingFloat?: T;
+  closedAt?: T;
+  expectedCash?: T;
+  countedCash?: T;
+  variance?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cash-movements_select".
+ */
+export interface CashMovementsSelect<T extends boolean = true> {
+  shift?: T;
+  outlet?: T;
+  type?: T;
+  amount?: T;
+  reason?: T;
+  user?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "customers_select".
+ */
+export interface CustomersSelect<T extends boolean = true> {
+  name?: T;
+  phone?: T;
+  email?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "products_select".
+ */
+export interface ProductsSelect<T extends boolean = true> {
+  name?: T;
+  sku?: T;
+  category?: T;
+  image?: T;
+  taxRate?: T;
+  hasVariants?: T;
+  active?: T;
+  variants?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "product-variants_select".
+ */
+export interface ProductVariantsSelect<T extends boolean = true> {
+  product?: T;
+  name?: T;
+  sku?: T;
+  barcodes?:
+    | T
+    | {
+        code?: T;
+        id?: T;
+      };
+  price?: T;
+  cost?: T;
+  active?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "categories_select".
+ */
+export interface CategoriesSelect<T extends boolean = true> {
+  name?: T;
+  parent?: T;
+  sortOrder?: T;
+  colour?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media_select".
+ */
+export interface MediaSelect<T extends boolean = true> {
+  alt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stock-levels_select".
+ */
+export interface StockLevelsSelect<T extends boolean = true> {
+  variant?: T;
+  outlet?: T;
+  quantity?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stock-movements_select".
+ */
+export interface StockMovementsSelect<T extends boolean = true> {
+  variant?: T;
+  outlet?: T;
+  delta?: T;
+  type?: T;
+  reference?: T;
+  user?: T;
+  reason?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  name?: T;
+  role?: T;
+  outlets?: T;
+  mustChangePassword?: T;
+  pinHash?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -261,21 +937,67 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media_select".
+ * via the `definition` "outlets_select".
  */
-export interface MediaSelect<T extends boolean = true> {
-  alt?: T;
+export interface OutletsSelect<T extends boolean = true> {
+  code?: T;
+  name?: T;
+  address?: T;
+  active?: T;
   updatedAt?: T;
   createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
-  focalX?: T;
-  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "registers_select".
+ */
+export interface RegistersSelect<T extends boolean = true> {
+  code?: T;
+  name?: T;
+  outlet?: T;
+  nextSaleNumber?: T;
+  active?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tax-rates_select".
+ */
+export interface TaxRatesSelect<T extends boolean = true> {
+  code?: T;
+  name?: T;
+  ratePercent?: T;
+  active?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-methods_select".
+ */
+export interface PaymentMethodsSelect<T extends boolean = true> {
+  code?: T;
+  label?: T;
+  type?: T;
+  enabled?: T;
+  requiresReference?: T;
+  sortOrder?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-log_select".
+ */
+export interface AuditLogSelect<T extends boolean = true> {
+  actor?: T;
+  action?: T;
+  entity?: T;
+  entityId?: T;
+  data?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -316,6 +1038,123 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "system-settings".
+ */
+export interface SystemSetting {
+  id: number;
+  legalName: string;
+  displayName: string;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  taxRegistrationNo?: string | null;
+  /**
+   * ISO 4217 code. Fixed at setup.
+   */
+  currency: string;
+  /**
+   * BCP 47, e.g. en-US.
+   */
+  locale: string;
+  /**
+   * IANA time zone, e.g. Asia/Colombo.
+   */
+  timezone: string;
+  dateFormat: 'yyyy-MM-dd' | 'dd/MM/yyyy' | 'MM/dd/yyyy' | 'dd.MM.yyyy' | 'dd-MM-yyyy';
+  /**
+   * Product prices include tax.
+   */
+  pricesIncludeTax?: boolean | null;
+  defaultTaxRate?: (number | null) | TaxRate;
+  modules?: {
+    inventory?: boolean | null;
+    customers?: boolean | null;
+    discounts?: boolean | null;
+    multiOutlet?: boolean | null;
+  };
+  receipt: {
+    paperWidthMm: '58' | '80';
+    showTaxBreakdown?: boolean | null;
+    showCashierName?: boolean | null;
+  };
+  /**
+   * Client ID from the config; must match the licence.
+   */
+  clientId?: string | null;
+  configSchemaVersion?: number | null;
+  seededAt?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "branding".
+ */
+export interface Branding {
+  id: number;
+  logo?: (number | null) | Media;
+  primaryColor: string;
+  accentColor: string;
+  receiptHeader?: string | null;
+  receiptFooter?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "system-settings_select".
+ */
+export interface SystemSettingsSelect<T extends boolean = true> {
+  legalName?: T;
+  displayName?: T;
+  address?: T;
+  phone?: T;
+  email?: T;
+  taxRegistrationNo?: T;
+  currency?: T;
+  locale?: T;
+  timezone?: T;
+  dateFormat?: T;
+  pricesIncludeTax?: T;
+  defaultTaxRate?: T;
+  modules?:
+    | T
+    | {
+        inventory?: T;
+        customers?: T;
+        discounts?: T;
+        multiOutlet?: T;
+      };
+  receipt?:
+    | T
+    | {
+        paperWidthMm?: T;
+        showTaxBreakdown?: T;
+        showCashierName?: T;
+      };
+  clientId?: T;
+  configSchemaVersion?: T;
+  seededAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "branding_select".
+ */
+export interface BrandingSelect<T extends boolean = true> {
+  logo?: T;
+  primaryColor?: T;
+  accentColor?: T;
+  receiptHeader?: T;
+  receiptFooter?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
