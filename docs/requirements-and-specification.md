@@ -429,55 +429,55 @@ kiln/
 
 The MVP is seven milestones, each ending in something that runs; the build pipeline works from the terminal (M4) before any builder UI exists (M5). Dates are not set yet.
 
-**M0 — Foundation**
+**M0 — Foundation** — done
 
-- [ ] Monorepo with pnpm workspaces, Turborepo, TypeScript strict, ESLint, Prettier
-- [ ] `apps/pos` from the Payload blank template on PostgreSQL; local Postgres via Docker Compose for development only
-- [ ] CI workflow: lint, typecheck, unit tests
-- [ ] `CLAUDE.md`, `.nvmrc`, README
+- [x] Monorepo with pnpm workspaces, Turborepo, TypeScript strict, ESLint, Prettier
+- [x] `apps/pos` from the Payload blank template on PostgreSQL; local Postgres via Docker Compose for development only
+- [x] CI workflow: lint, typecheck, unit tests
+- [x] `CLAUDE.md`, `.nvmrc`, README
 
 Exit: `pnpm dev` starts the POS admin locally; CI is green.
 
-**M1 — Client config and pricing packages**
+**M1 — Client config and pricing packages** — done
 
-- [ ] `packages/client-config`: Zod schema, types, example configs, validation tests
-- [ ] `packages/pricing`: line totals, discounts, tax inclusive and exclusive, rounding, refunds, with full unit tests
-- [ ] `packages/licence`: payload type, sign and verify, with tests
+- [x] `packages/client-config`: Zod schema, types, example configs, validation tests
+- [x] `packages/pricing`: line totals, discounts, tax inclusive and exclusive, rounding, refunds, with full unit tests
+- [x] `packages/licence`: payload type, sign and verify, with tests
 
 Exit: all three packages published inside the workspace with full test coverage of pricing.
 
-**M2 — POS data model and first boot**
+**M2 — POS data model and first boot** — done
 
-- [ ] All collections and globals from the data model, with access control
-- [ ] Storage adapter selected by `STORAGE_DRIVER`
-- [ ] `prodMigrations` wired; initial migration generated
-- [ ] First-boot seeding from `client.config.json`; first admin with forced password change
-- [ ] Licence verification on startup and daily
+- [x] All collections and globals from the data model, with access control
+- [x] Storage adapter selected by `STORAGE_DRIVER`
+- [x] `prodMigrations` wired; initial migration generated
+- [x] First-boot seeding from `client.config.json`; first admin with forced password change
+- [x] Licence verification on startup and daily
 
 Exit: a fresh database plus a config file produces a seeded, licensed POS admin.
 
-**M3 — Checkout, payments, shifts, refunds**
+**M3 — Checkout, payments, shifts, refunds** — done
 
-- [ ] Cashier screen: login, PIN switch, product grid, search, barcode input, cart, discounts
-- [ ] Shift open, cash movements, shift close with variance
-- [ ] `finalise-sale` endpoint with transaction, stock decrement and sale numbering
-- [ ] Split payments, change calculation, external card confirmation
-- [ ] Browser receipt at 58 and 80 mm, reprint
-- [ ] Refunds with manager approval and restock
-- [ ] Reports with CSV export
-- [ ] Playwright end-to-end test of a full trading day
+- [x] Cashier screen: login, PIN switch, product grid, search, barcode input, cart, discounts
+- [x] Shift open, cash movements, shift close with variance
+- [x] `finalise-sale` endpoint with transaction, stock decrement and sale numbering
+- [x] Split payments, change calculation, external card confirmation
+- [x] Browser receipt at 58 and 80 mm, reprint
+- [x] Refunds with manager approval and restock
+- [x] Reports with CSV export
+- [x] Playwright end-to-end test of a full trading day
 
 Exit: the end-to-end test opens a shift, sells, refunds and closes the shift with correct totals.
 
-**M4 — Build script (config in, zip out)**
+**M4 — Build script (config in, zip out)** — done
 
-- [ ] `scripts/build-client.ts`: validate, inject config and assets, standalone build, obfuscate, licence, package, zip, checksum
-- [ ] Start scripts, `.env.example`, `README.txt`
-- [ ] Verify the zip runs on a clean Linux machine and a clean Windows machine with only Node.js and PostgreSQL
+- [x] `scripts/build-client.ts`: validate, inject config and assets, standalone build, obfuscate, licence, package, zip, checksum
+- [x] Start scripts, `.env.example`, `README.txt`
+- [x] Verify the zip runs on a clean Linux machine and a clean Windows machine with only Node.js and PostgreSQL
 
 Exit: one command turns an example config into a zip that runs on both platforms.
 
-**M5 — Builder app and remote builds**
+**M5 — Builder app and remote builds** — in progress
 
 - [ ] `apps/builder` with owner login, TOTP 2FA, rate limiting, audit log
 - [ ] Clients, setup wizard, versioned configs with diff
