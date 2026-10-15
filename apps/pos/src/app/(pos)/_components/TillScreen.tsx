@@ -39,6 +39,7 @@ import { DiscountDialog } from './dialogs/DiscountDialog'
 import { ParkedDialog } from './dialogs/ParkedDialog'
 import { PaymentDialog, type CompletedSale } from './dialogs/PaymentDialog'
 import { RefundDialog } from './dialogs/RefundDialog'
+import { ReprintDialog } from './dialogs/ReprintDialog'
 import { SaleCompleteDialog } from './dialogs/SaleCompleteDialog'
 import { CashMovementDialog, CloseShiftDialog } from './dialogs/ShiftDialogs'
 
@@ -48,6 +49,7 @@ type Dialog =
   | { kind: 'customer' }
   | { kind: 'parked' }
   | { kind: 'refund' }
+  | { kind: 'reprint' }
   | { kind: 'cash' }
   | { kind: 'close' }
   | { kind: 'complete'; sale: CompletedSale }
@@ -283,6 +285,9 @@ export function TillScreen({
               Cash in/out
             </Button>
           )}
+          <Button variant="outline" className="h-11" onClick={() => setDialog({ kind: 'reprint' })}>
+            Reprint
+          </Button>
           <Button variant="outline" className="h-11" onClick={() => setDialog({ kind: 'close' })}>
             Close shift
           </Button>
@@ -356,6 +361,7 @@ export function TillScreen({
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === 'reprint' && <ReprintDialog onClose={() => setDialog(null)} />}
       {dialog?.kind === 'refund' && (
         <RefundDialog
           shift={shift}
