@@ -261,13 +261,13 @@ try {
   }
 
   // 7. Obfuscate the compiled server code. Client bundles stay minified only.
+  // Every server chunk: Turbopack bundles our code together with libraries, so chunk size says
+  // nothing about whose code is inside. Exported names stay readable; function bodies do not.
   step('Obfuscating the server bundle')
   const serverFiles = walk(path.join(pkg, '.next/server')).filter((f) => /\.[cm]?js$/.test(f))
   let obfuscated = 0
   for (const file of serverFiles) {
     const code = readFileSync(file, 'utf8')
-    // Our code is in small chunks; very large chunks are bundled third-party libraries.
-    if (code.length > 1_500_000) continue
     writeFileSync(
       file,
       JavaScriptObfuscator.obfuscate(code, {
