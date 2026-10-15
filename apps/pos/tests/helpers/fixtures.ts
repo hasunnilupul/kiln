@@ -71,6 +71,8 @@ export async function callEndpoint(
   payload: Payload,
   endpoint: Endpoint,
   options: { user?: User; body?: unknown; params?: Record<string, unknown> } = {},
+  // Response bodies are checked with toMatchObject; typing each one would add nothing.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<{ status: number; body: any }> {
   const req = await createLocalReq(
     { user: options.user ? asUser(options.user) : undefined },
