@@ -1,0 +1,34 @@
+{
+  "name": "@kiln/pricing",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pure pricing, discount, tax, rounding, payment and refund functions",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@kiln/eslint-config": "workspace:*",
+    "@kiln/typescript-config": "workspace:*",
+    "@types/node": "22.19.9",
+    "@vitest/coverage-v8": "4.0.18",
+    "eslint": "^9.39.5",
+    "typescript": "5.7.3",
+    "vitest": "4.0.18"
+  }
+}
