@@ -1,0 +1,22 @@
+{
+  "name": "kiln",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run check-types",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check"
+  },
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "prettier": "3.9.10",
+    "turbo": "^2.11.8"
+  }
+}
