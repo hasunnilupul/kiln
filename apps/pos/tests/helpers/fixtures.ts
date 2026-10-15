@@ -70,7 +70,12 @@ export const asUser = (user: User) => ({ ...user, collection: 'users' as const }
 export async function callEndpoint(
   payload: Payload,
   endpoint: Endpoint,
-  options: { user?: User; body?: unknown; params?: Record<string, unknown> } = {},
+  options: {
+    user?: User
+    body?: unknown
+    params?: Record<string, unknown>
+    headers?: Record<string, string>
+  } = {},
   // Response bodies are checked with toMatchObject; typing each one would add nothing.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<{ status: number; body: any }> {
@@ -80,6 +85,7 @@ export async function callEndpoint(
   )
   req.data = (options.body ?? {}) as Record<string, unknown>
   req.routeParams = options.params ?? {}
+  for (const [name, value] of Object.entries(options.headers ?? {})) req.headers.set(name, value)
   const response = await endpoint.handler(req)
   return { status: response.status, body: await response.json() }
 }

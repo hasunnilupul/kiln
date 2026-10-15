@@ -5,11 +5,12 @@ import { hasRole } from '../../access/roles'
 import { inTransaction, lockRow } from '../../lib/db'
 import { licensedRegisterLimit } from '../../lib/licence'
 import { loadShiftSummary } from '../../lib/shifts'
-import type { Shift, User } from '../../payload-types'
+import type { Shift } from '../../payload-types'
 import {
   MANAGERS,
   PosError,
   STAFF,
+  type StaffUser,
   assertOutletAccess,
   id,
   money,
@@ -38,11 +39,7 @@ async function assertRegisterLicensed(req: PayloadRequest, registerId: number) {
 }
 
 /** Locks and loads a shift, checking the user may act on it. Cashiers act only on their own. */
-async function lockShift(
-  req: PayloadRequest,
-  user: User & { collection: 'users' },
-  shiftId: number,
-) {
+async function lockShift(req: PayloadRequest, user: StaffUser, shiftId: number) {
   if (!(await lockRow(req, 'shifts', shiftId))) {
     throw new PosError(404, 'shift_not_found', 'Shift not found')
   }
@@ -67,7 +64,7 @@ export const openShift = posEndpoint({
   status: 201,
   body: z.object({ registerId: id, openingFloat: money }),
   handler: async (req, body) => {
-    const user = requireUser(req, STAFF)
+    const user = await requireUser(req, STAFF)
     return inTransaction(req, async () => {
       // Serialises opens on one register so it never has two open shifts.
       if (!(await lockRow(req, 'registers', body.registerId))) {
@@ -127,7 +124,7 @@ export const recordCashMovement = posEndpoint({
     reason: z.string().trim().min(1).max(200),
   }),
   handler: async (req, body) => {
-    const user = requireUser(req, MANAGERS)
+    const user = await requireUser(req, MANAGERS)
     const shiftId = routeId(req)
     return inTransaction(req, async () => {
       const shift = await lockShift(req, user, shiftId)
@@ -150,7 +147,7 @@ export const closeShift = posEndpoint({
   path: '/shifts/:id/close',
   body: z.object({ countedCash: money }),
   handler: async (req, body) => {
-    const user = requireUser(req, STAFF)
+    const user = await requireUser(req, STAFF)
     const shiftId = routeId(req)
     return inTransaction(req, async () => {
       // The lock also waits for in-flight sales on this shift to finish.
@@ -179,7 +176,7 @@ export const shiftSummary = posEndpoint({
   method: 'get',
   path: '/shifts/:id/summary',
   handler: async (req) => {
-    const user = requireUser(req, STAFF)
+    const user = await requireUser(req, STAFF)
     const shiftId = routeId(req)
     return inTransaction(req, async () => {
       const shift = await lockShift(req, user, shiftId)
