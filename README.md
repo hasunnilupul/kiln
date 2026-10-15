@@ -8,11 +8,13 @@ White-label point-of-sale system. Each client is configured in a private builder
 apps/
   pos/                      POS template (Payload CMS 3 on Next.js)
 packages/
+  client-config/            Zod schema and types for client.config.json, with example configs
+  eslint-config/            shared ESLint preset for library packages
   typescript-config/        shared tsconfig presets
 docker-compose.yml          local PostgreSQL (development only)
 ```
 
-`apps/builder`, `packages/client-config`, `packages/pricing`, `packages/licence`, `packages/ui` and `scripts/build-client.ts` arrive in later milestones.
+`apps/builder`, `packages/pricing`, `packages/licence`, `packages/ui` and `scripts/build-client.ts` arrive in later milestones.
 
 ## Prerequisites
 
@@ -43,5 +45,7 @@ Open `http://localhost:3000/admin` and create the first user. If port 3000 is ta
 | `pnpm test:e2e`     | Playwright end-to-end tests                                    |
 | `pnpm format`       | Format with Prettier                                           |
 | `pnpm format:check` | Check formatting                                               |
+
+Library packages under `packages/` compile with `tsc` to `dist/`; Turborepo builds them before the apps and tests that depend on them.
 
 CI (`.github/workflows/ci.yml`) runs format check, lint, typecheck and tests against a PostgreSQL service container.
