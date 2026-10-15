@@ -36,6 +36,8 @@ pnpm dev --filter pos
 
 On first start the POS seeds the empty database from `client.config.json` (settings, branding, tax rates, payment methods, outlets, registers) and creates the admin from its `admin` section. Open `http://localhost:3000/admin`, sign in with that email and `INITIAL_ADMIN_PASSWORD`, and set a new password when asked. If port 3000 is taken, Next.js picks the next free port; set `PORT` to choose one.
 
+Without a `licence.json`, development runs unlicensed. To exercise the licence check, run `pnpm licence:dev` and add the two lines it prints to `apps/pos/.env`. `GET /api/health` reports app, database and licence status.
+
 In development the schema is pushed straight to the database. After a schema change, generate its migration with `pnpm --filter pos payload migrate:create <name>`; production servers run pending migrations on startup.
 
 ## Scripts

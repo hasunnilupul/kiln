@@ -8,9 +8,18 @@ importers:
 
   .:
     devDependencies:
+      '@kiln/client-config':
+        specifier: workspace:*
+        version: link:packages/client-config
+      '@kiln/licence':
+        specifier: workspace:*
+        version: link:packages/licence
       prettier:
         specifier: 3.9.10
         version: 3.9.10
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
       turbo:
         specifier: ^2.11.8
         version: 2.11.8
@@ -20,6 +29,9 @@ importers:
       '@kiln/client-config':
         specifier: workspace:*
         version: link:../../packages/client-config
+      '@kiln/licence':
+        specifier: workspace:*
+        version: link:../../packages/licence
       '@kiln/pricing':
         specifier: workspace:*
         version: link:../../packages/pricing

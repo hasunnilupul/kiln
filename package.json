@@ -1,6 +1,7 @@
 {
   "name": "kiln",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -9,14 +10,18 @@
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "licence:dev": "tsx scripts/dev-licence.ts"
   },
   "packageManager": "pnpm@10.34.6",
   "engines": {
     "node": ">=22"
   },
   "devDependencies": {
+    "@kiln/client-config": "workspace:*",
+    "@kiln/licence": "workspace:*",
     "prettier": "3.9.10",
+    "tsx": "4.23.15",
     "turbo": "^2.11.8"
   }
 }
