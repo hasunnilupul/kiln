@@ -4,13 +4,14 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"],
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"],
       "passThroughEnv": ["DATABASE_URI", "PAYLOAD_SECRET"]
     },
     "dev": {
       "persistent": true,
       "cache": false,
-      "passThroughEnv": ["PORT"]
+      "passThroughEnv": ["PORT"],
+      "dependsOn": ["^build"]
     },
     "lint": {
       "dependsOn": ["^lint"]
@@ -23,11 +24,13 @@
     },
     "test": {
       "cache": false,
-      "passThroughEnv": ["DATABASE_URI", "PAYLOAD_SECRET"]
+      "passThroughEnv": ["DATABASE_URI", "PAYLOAD_SECRET"],
+      "dependsOn": ["^build"]
     },
     "test:e2e": {
       "cache": false,
-      "passThroughEnv": ["DATABASE_URI", "PAYLOAD_SECRET", "CI"]
+      "passThroughEnv": ["DATABASE_URI", "PAYLOAD_SECRET", "CI"],
+      "dependsOn": ["^build"]
     }
   }
 }
