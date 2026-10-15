@@ -64,6 +64,7 @@ TypeScript (strict) · Next.js App Router · Payload CMS 3 · PostgreSQL (`@payl
 
 - `main` is production; `dev` is the integration branch.
 - Start every task on a new branch created from `dev`, and merge it back into `dev` when done.
+- Delete the task branch after it has been merged.
 - Merge `dev` into `main` only when the features in `dev` should go to production.
 - Branch names: `feat/<topic>`, `fix/<topic>`, `refactor/<topic>`, `docs/<topic>`, `test/<topic>`, `perf/<topic>` — plain, human-readable names based on the task.
 - Commits follow Conventional Commits using `feat`, `fix`, `refactor`, `docs`, `test`, `perf`. Do not use `chore` unless explicitly asked.
