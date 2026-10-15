@@ -25,8 +25,10 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -86,8 +88,32 @@ function output(command: string, commandArgs: string[], cwd: string): string {
 function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name)
+    if (entry.isSymbolicLink()) fail(`Symlink in the package: ${full}`)
     return entry.isDirectory() ? walk(full) : [full]
   })
+}
+
+/**
+ * Replaces every symlink under `dir` with a real copy of what it points to. A zip cannot carry
+ * symlinks to every OS, and Next's standalone output links external packages (e.g. `pg-<hash>`).
+ */
+function materializeSymlinks(dir: string) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name)
+    if (entry.isSymbolicLink()) {
+      let target: string
+      try {
+        target = realpathSync(full)
+      } catch {
+        fail(`Broken symlink in the build output: ${full}`)
+      }
+      unlinkSync(full)
+      cpSync(target!, full, { recursive: true, dereference: true })
+      if (statSync(full).isDirectory()) materializeSymlinks(full)
+    } else if (entry.isDirectory()) {
+      materializeSymlinks(full)
+    }
+  }
 }
 
 const LOGO_TYPES: Record<string, string> = {
@@ -214,11 +240,11 @@ try {
   // 6. A portable folder: server.js at the top, every symlink replaced by a real copy.
   step('Assembling the package')
   const standalone = path.join(app, '.next/standalone')
-  cpSync(path.join(standalone, 'apps/pos'), pkg, { recursive: true, dereference: true })
-  cpSync(path.join(standalone, 'node_modules'), path.join(pkg, 'node_modules'), {
-    recursive: true,
-    dereference: true,
-  })
+  // Links are resolved where they sit (Next writes relative ones on Linux, absolute on Windows),
+  // before anything moves.
+  materializeSymlinks(standalone)
+  cpSync(path.join(standalone, 'apps/pos'), pkg, { recursive: true })
+  cpSync(path.join(standalone, 'node_modules'), path.join(pkg, 'node_modules'), { recursive: true })
   cpSync(path.join(app, '.next/static'), path.join(pkg, '.next/static'), { recursive: true })
   cpSync(path.join(app, 'public'), path.join(pkg, 'public'), { recursive: true })
 
