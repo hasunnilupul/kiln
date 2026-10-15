@@ -1,0 +1,112 @@
+name: Client build
+
+# M4 exit check: one zip, built from an example config, runs on clean Linux and Windows machines
+# with only Node.js and PostgreSQL. The builder's remote builds (M5) reuse scripts/build-client.ts.
+
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the example client
+        run: |
+          pnpm build:client \
+            --config packages/client-config/examples/acme-mart.client.config.json \
+            --dev-licence --out dist-clients
+          cp scripts/smoke-check-client.mjs dist-clients/
+          ls -l dist-clients
+      - uses: actions/upload-artifact@v7
+        with:
+          name: client-build
+          path: dist-clients
+          retention-days: 7
+
+  # Clean runners: no checkout and no pnpm, only the preinstalled Node.js 22 and PostgreSQL.
+  smoke-linux:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: client-build
+          path: build
+      - name: Start PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'root';" -c "CREATE DATABASE pos;"
+      - name: Unzip and configure
+        run: |
+          mkdir pos && unzip -q build/*.zip -d pos
+          cat > pos/.env <<'EOF'
+          DATABASE_URI=postgres://postgres:root@localhost:5432/pos
+          PAYLOAD_SECRET=smoke-test-secret-0123456789abcdef0123456789
+          INITIAL_ADMIN_PASSWORD=smoke-initial-password
+          PUBLIC_URL=http://localhost:3000
+          STORAGE_DRIVER=r2
+          R2_ACCOUNT_ID=smoke
+          R2_ACCESS_KEY_ID=smoke
+          R2_SECRET_ACCESS_KEY=smoke
+          R2_BUCKET=smoke
+          EOF
+          sed -i 's/^ *//' pos/.env
+      - name: Run start.sh and check the POS
+        run: |
+          node --version
+          (cd pos && ./start.sh > ../server.log 2>&1 &)
+          node build/smoke-check-client.mjs http://localhost:3000 owner@acmemart.example smoke-initial-password
+      - if: always()
+        run: cat server.log || true
+
+  smoke-windows:
+    needs: build
+    runs-on: windows-2025
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: client-build
+          path: build
+      - name: Start PostgreSQL
+        shell: pwsh
+        run: |
+          Set-Service -Name postgresql-x64-17 -StartupType Manual
+          Start-Service -Name postgresql-x64-17
+          $env:PGPASSWORD = 'root'
+          & "$env:PGBIN\createdb.exe" -U postgres pos
+      - name: Unzip and configure
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem build\*.zip | Select-Object -First 1
+          Expand-Archive -Path $zip.FullName -DestinationPath pos
+          @(
+            'DATABASE_URI=postgres://postgres:root@localhost:5432/pos'
+            'PAYLOAD_SECRET=smoke-test-secret-0123456789abcdef0123456789'
+            'INITIAL_ADMIN_PASSWORD=smoke-initial-password'
+            'PUBLIC_URL=http://localhost:3000'
+            'STORAGE_DRIVER=r2'
+            'R2_ACCOUNT_ID=smoke'
+            'R2_ACCESS_KEY_ID=smoke'
+            'R2_SECRET_ACCESS_KEY=smoke'
+            'R2_BUCKET=smoke'
+          ) | Set-Content -Path pos\.env -Encoding ascii
+      - name: Run start.bat and check the POS
+        shell: pwsh
+        run: |
+          node --version
+          $pos = Resolve-Path pos
+          Start-Process -FilePath cmd.exe -ArgumentList '/c', "`"$pos\start.bat`" > `"$pwd\server.log`" 2>&1" -WindowStyle Hidden
+          node build\smoke-check-client.mjs http://localhost:3000 owner@acmemart.example smoke-initial-password
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - if: always()
+        shell: pwsh
+        run: Get-Content server.log -ErrorAction SilentlyContinue

@@ -90,7 +90,7 @@ pnpm test:e2e                # Playwright e2e: own server on :3100 and a fresh <
 pnpm format                  # Prettier write; format:check in CI
 pnpm --filter pos payload migrate:create <name>   # generate a migration after schema changes
 pnpm licence:dev             # throwaway localhost licence + public key for development
-pnpm build:client --config <path/to/client.config.json>   # build a client zip locally (M4)
+pnpm build:client --config <client.config.json> --dev-licence   # client zip from HEAD into dist-clients/ (README: Client builds)
 ```
 
 Local development uses PostgreSQL via `docker compose up -d db` (development only; client deliveries do not use Docker).
@@ -113,7 +113,7 @@ Local development uses PostgreSQL via `docker compose up -d db` (development onl
 
 ## Current status
 
-Milestones M0 (foundation), M1 (`client-config`, `pricing`, `licence` packages) M2 (POS data model, storage, migrations, first-boot seeding, licence checks) and M3 (shifts, checkout, payments, refunds, receipts, reports, cashier screen) are done; next is M4. Roadmap: M0 foundation → M1 config, pricing and licence packages → M2 POS data model and first boot → M3 checkout, payments, shifts, refunds → M4 build script → M5 builder app and remote builds → M6 hardening and first client readiness.
+Milestones M0 (foundation), M1 (`client-config`, `pricing`, `licence` packages) M2 (POS data model, storage, migrations, first-boot seeding, licence checks) M3 (shifts, checkout, payments, refunds, receipts, reports, cashier screen) and M4 (scripts/build-client.ts, client-build workflow) are done; next is M5. Roadmap: M0 foundation → M1 config, pricing and licence packages → M2 POS data model and first boot → M3 checkout, payments, shifts, refunds → M4 build script → M5 builder app and remote builds → M6 hardening and first client readiness.
 
 ## Out of scope for the MVP
 

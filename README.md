@@ -58,3 +58,17 @@ Library packages under `packages/` compile with `tsc` to `dist/`; Turborepo buil
 End-to-end tests (`pnpm test:e2e`) start their own POS on port 3100 (`E2E_PORT`) against a fresh `<database>_e2e` database, seeded from the example config, and drive a full trading day in Chromium. Stop `pnpm dev` first: Next.js runs one dev server per app. Install the browser once with `pnpm --filter pos exec playwright install chromium`.
 
 CI (`.github/workflows/ci.yml`) runs format check, lint, typecheck and tests against a PostgreSQL service container.
+
+## Client builds
+
+Each client receives a zip built from a committed template version and their `client.config.json`. In normal use the builder (M5) triggers this in GitHub Actions; the same command runs locally for testing:
+
+```bash
+pnpm build:client --config packages/client-config/examples/acme-mart.client.config.json --dev-licence
+```
+
+It checks out the commit (`--ref`, default `HEAD`) into a temporary worktree, so uncommitted changes are not included and your working copy is untouched. It writes `dist-clients/<slug>-pos-<template version>-c<config version>.zip` and a `.sha256` next to it, and prints a JSON summary on the last line. The zip contains the compiled, obfuscated server with its dependencies (no TypeScript, source maps or native modules), `client.config.json`, `licence.json`, `.env.example`, `start.sh`, `start.bat` and `README.txt`, and runs anywhere with Node.js 22.9+ and PostgreSQL.
+
+`--dev-licence` signs a throwaway licence for `localhost` that lasts 30 days, for testing only. Real builds pass the builder's signed licence and public key: `--licence licence.json --public-key public.pem`. Other options: `--template-version`, `--config-version`, `--out`, `--keep-workdir`.
+
+`.github/workflows/client-build.yml` builds the example client on Linux, then runs that zip on clean Linux and Windows runners (only Node.js and PostgreSQL) and checks health, licence, sign-in and branding with `scripts/smoke-check-client.mjs`.
