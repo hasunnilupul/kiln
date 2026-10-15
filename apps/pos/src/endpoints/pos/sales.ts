@@ -11,7 +11,7 @@ import { z } from 'zod'
 import { hasRole } from '../../access/roles'
 import { approvalSchema, verifyManagerApproval } from '../../lib/approvals'
 import { execute, inTransaction, lockRow, sql } from '../../lib/db'
-import { licensedModules } from '../../lib/licence'
+import { activeModules, loadSettings } from '../../lib/settings'
 import { applyStockChange } from '../../lib/stock'
 import type { PaymentMethod, Product, ProductVariant, Sale, TaxRate } from '../../payload-types'
 import {
@@ -188,18 +188,8 @@ export const finaliseSale = posEndpoint({
         throw new PosError(403, 'not_your_shift', 'Sell on your own shift')
       }
 
-      const settings = await req.payload.findGlobal({
-        slug: 'system-settings',
-        depth: 0,
-        ...local(req),
-      })
-      const enabled = settings.modules ?? {}
-      const modules = licensedModules({
-        inventory: Boolean(enabled.inventory),
-        customers: Boolean(enabled.customers),
-        discounts: Boolean(enabled.discounts),
-        multiOutlet: Boolean(enabled.multiOutlet),
-      })
+      const settings = await loadSettings(req)
+      const modules = activeModules(settings)
       const hasDiscount = Boolean(body.cartDiscount) || body.lines.some((line) => line.discount)
       if (hasDiscount && !modules.discounts) {
         throw new PosError(403, 'discounts_disabled', 'Discounts are not enabled')
