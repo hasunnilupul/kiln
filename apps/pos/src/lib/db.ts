@@ -8,17 +8,17 @@ type SQL = ReturnType<typeof sql>
 
 /**
  * Runs `fn` in one database transaction carried on `req`, so every Local API call made with `req`
- * joins it (CLAUDE.md: Sales integrity). Rolls back on any error. Nested calls reuse the outer
- * transaction and leave committing to it.
+ * joins it (CLAUDE.md: Sales integrity). Rolls back on any error. Nested calls join the outer
+ * transaction and leave committing or rolling back to its owner.
  */
 export async function inTransaction<T>(req: PayloadRequest, fn: () => Promise<T>): Promise<T> {
-  const shouldCommit = await initTransaction(req)
+  const owner = await initTransaction(req)
   try {
     const result = await fn()
-    if (shouldCommit) await commitTransaction(req)
+    if (owner) await commitTransaction(req)
     return result
   } catch (error) {
-    await killTransaction(req)
+    if (owner) await killTransaction(req)
     throw error
   }
 }

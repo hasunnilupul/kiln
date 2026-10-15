@@ -176,6 +176,11 @@ export interface Sale {
   shift: number | Shift;
   cashier: number | User;
   customer?: (number | null) | Customer;
+  /**
+   * Manager who approved a discount above the limit (FR-13).
+   */
+  discountApprovedBy?: (number | null) | User;
+  clientRef: string;
   status: 'completed';
   completedAt: string;
   /**
@@ -693,6 +698,8 @@ export interface SalesSelect<T extends boolean = true> {
   shift?: T;
   cashier?: T;
   customer?: T;
+  discountApprovedBy?: T;
+  clientRef?: T;
   status?: T;
   completedAt?: T;
   pricesIncludeTax?: T;
@@ -1084,6 +1091,12 @@ export interface SystemSetting {
     showTaxBreakdown?: boolean | null;
     showCashierName?: boolean | null;
   };
+  approvals: {
+    /**
+     * Line or cart discounts above this percentage need a manager PIN (FR-13).
+     */
+    discountLimitPercent: number;
+  };
   /**
    * Client ID from the config; must match the licence.
    */
@@ -1138,6 +1151,11 @@ export interface SystemSettingsSelect<T extends boolean = true> {
         paperWidthMm?: T;
         showTaxBreakdown?: T;
         showCashierName?: T;
+      };
+  approvals?:
+    | T
+    | {
+        discountLimitPercent?: T;
       };
   clientId?: T;
   configSchemaVersion?: T;

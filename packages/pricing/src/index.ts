@@ -10,6 +10,7 @@ export { buildTaxBreakdown, calculateLineTax, type LineTax, type TaxBreakdownEnt
 export {
   calculateCart,
   discountAmount,
+  discountExceedsLimit,
   type CartInput,
   type CartLine,
   type CartLineInput,

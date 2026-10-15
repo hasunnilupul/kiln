@@ -3,6 +3,7 @@ import type { GlobalConfig } from 'payload'
 import { DATE_FORMATS, MODULE_NAMES } from '@kiln/client-config'
 
 import { isAdmin, isStaff, nobodyField } from '../access/roles'
+import { percentField } from '../fields/common'
 import { auditGlobalChange } from '../hooks/audit'
 
 /**
@@ -103,6 +104,26 @@ export const SystemSettings: GlobalConfig = {
                 },
                 { name: 'showTaxBreakdown', type: 'checkbox', defaultValue: true },
                 { name: 'showCashierName', type: 'checkbox', defaultValue: true },
+              ],
+            },
+          ],
+        },
+        {
+          label: 'Approvals',
+          fields: [
+            {
+              name: 'approvals',
+              type: 'group',
+              fields: [
+                percentField({
+                  name: 'discountLimitPercent',
+                  required: true,
+                  defaultValue: 10,
+                  admin: {
+                    description:
+                      'Line or cart discounts above this percentage need a manager PIN (FR-13).',
+                  },
+                }),
               ],
             },
           ],

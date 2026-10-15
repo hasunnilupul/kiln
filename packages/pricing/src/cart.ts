@@ -127,3 +127,14 @@ export function calculateCart(input: CartInput): CartTotals {
     taxBreakdown: buildTaxBreakdown(lines),
   }
 }
+
+/**
+ * True when `discount` is more than `limitPercent` of `base` (FR-13), compared exactly in
+ * integers. A discount on a zero base exceeds any limit only if it is itself non-zero.
+ */
+export function discountExceedsLimit(discount: Money, base: Money, limitPercent: number): boolean {
+  assertMoney(discount, 'discount')
+  assertMoney(base, 'base')
+  const limitPpm = percentToPpm(limitPercent, 'limitPercent')
+  return BigInt(discount) * BigInt(PPM_PER_WHOLE) > BigInt(base) * BigInt(limitPpm)
+}

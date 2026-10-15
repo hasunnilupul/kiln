@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { calculateCart, discountAmount, type CartInput, type CartLineInput } from './cart.js'
+import {
+  calculateCart,
+  discountAmount,
+  discountExceedsLimit,
+  type CartInput,
+  type CartLineInput,
+} from './cart.js'
+import { PricingError } from './errors.js'
 
 const line = (
   unitPrice: number,
@@ -242,5 +249,26 @@ describe('cart invariants', () => {
         expect(l.total).toBe(l.totalExcludingTax + l.tax)
       }
     }
+  })
+})
+
+describe('discountExceedsLimit (FR-13)', () => {
+  it.each([
+    [100, 1000, 10, false],
+    [101, 1000, 10, true],
+    [0, 1000, 0, false],
+    [1, 1000, 0, true],
+    [1000, 1000, 100, false],
+    [0, 0, 10, false],
+    [1, 0, 10, true],
+    [125, 1000, 12.5, false],
+    [126, 1000, 12.5, true],
+  ])('%d off %d with a %d%% limit exceeds: %s', (discount, base, limit, expected) => {
+    expect(discountExceedsLimit(discount, base, limit)).toBe(expected)
+  })
+
+  it('validates its inputs', () => {
+    expect(() => discountExceedsLimit(-1, 10, 10)).toThrow(PricingError)
+    expect(() => discountExceedsLimit(1, 10, 101)).toThrow(PricingError)
   })
 })

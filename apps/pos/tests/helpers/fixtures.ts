@@ -1,5 +1,11 @@
 import type { Outlet, Register, User } from '@/payload-types'
-import { createLocalReq, type CollectionSlug, type Endpoint, type Payload } from 'payload'
+import {
+  createLocalReq,
+  type CollectionSlug,
+  type Endpoint,
+  type Payload,
+  type PayloadRequest,
+} from 'payload'
 
 /**
  * Creates uniquely named fixtures and removes them (and their audit entries) afterwards, so
@@ -75,14 +81,16 @@ export async function callEndpoint(
     body?: unknown
     params?: Record<string, unknown>
     headers?: Record<string, string>
+    /** Reuse a request, e.g. one carrying a test transaction that is rolled back afterwards. */
+    req?: PayloadRequest
   } = {},
   // Response bodies are checked with toMatchObject; typing each one would add nothing.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<{ status: number; body: any }> {
-  const req = await createLocalReq(
-    { user: options.user ? asUser(options.user) : undefined },
-    payload,
-  )
+  const user = options.user ? asUser(options.user) : undefined
+  const req = options.req ?? (await createLocalReq({ user }, payload))
+  req.user = user ?? null
+  req.headers = new Headers()
   req.data = (options.body ?? {}) as Record<string, unknown>
   req.routeParams = options.params ?? {}
   for (const [name, value] of Object.entries(options.headers ?? {})) req.headers.set(name, value)
