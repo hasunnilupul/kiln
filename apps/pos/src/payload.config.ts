@@ -31,6 +31,7 @@ import { saleEndpoints } from './endpoints/pos/sales'
 import { shiftEndpoints } from './endpoints/pos/shifts'
 import { staffEndpoints } from './endpoints/pos/staff'
 import { startLicenceChecks } from './lib/licence'
+import { isBuildPhase } from './lib/runtime'
 import { seedOnFirstBoot } from './lib/seed'
 import { resolveStorage, storagePlugins } from './lib/storage'
 import { migrations } from './migrations'
@@ -98,8 +99,9 @@ export default buildConfig({
       connectionString: process.env.DATABASE_URI || '',
     },
     // Development pushes schema changes directly; production runs these on startup before
-    // serving requests (FR-01). Generate one with `pnpm --filter pos payload migrate:create`.
-    prodMigrations: migrations,
+    // serving requests (FR-01), but never during `next build`, which has no database.
+    // Generate one with `pnpm --filter pos payload migrate:create`.
+    prodMigrations: isBuildPhase() ? undefined : migrations,
   }),
   plugins: [...storagePlugins(resolveStorage(process.env))],
 })
