@@ -33,6 +33,8 @@ export default buildConfig({
       views: {
         // Password + TOTP sign-in (BR-01) in place of Payload's email/password form.
         login: { Component: '/components/SignIn#SignInView' },
+        // Explains the environment-seeded first owner in place of Payload's sign-up form.
+        createFirstUser: { Component: '/components/SignIn/NoOwner#NoOwnerView' },
       },
     },
   },
