@@ -70,6 +70,7 @@ export interface Config {
     clients: Client;
     'client-configs': ClientConfig;
     licences: Licence;
+    builds: Build;
     users: User;
     'audit-log': AuditLog;
     'login-attempts': LoginAttempt;
@@ -83,6 +84,7 @@ export interface Config {
     clients: ClientsSelect<false> | ClientsSelect<true>;
     'client-configs': ClientConfigsSelect<false> | ClientConfigsSelect<true>;
     licences: LicencesSelect<false> | LicencesSelect<true>;
+    builds: BuildsSelect<false> | BuildsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
     'login-attempts': LoginAttemptsSelect<false> | LoginAttemptsSelect<true>;
@@ -245,6 +247,36 @@ export interface Licence {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "builds".
+ */
+export interface Build {
+  id: number;
+  client: number | Client;
+  label?: string | null;
+  status: 'queued' | 'building' | 'succeeded' | 'failed';
+  configVersion: number | ClientConfig;
+  configNumber: number;
+  templateVersion: string;
+  licenceId: string;
+  requestedBy?: (number | null) | User;
+  rebuildOf?: (number | null) | Build;
+  /**
+   * GitHub Actions run, with the logs.
+   */
+  runUrl?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  error?: string | null;
+  zipKey?: string | null;
+  zipName?: string | null;
+  size?: number | null;
+  sha256?: string | null;
+  commit?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "audit-log".
  */
 export interface AuditLog {
@@ -315,6 +347,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'licences';
         value: number | Licence;
+      } | null)
+    | ({
+        relationTo: 'builds';
+        value: number | Build;
       } | null)
     | ({
         relationTo: 'users';
@@ -421,6 +457,32 @@ export interface LicencesSelect<T extends boolean = true> {
   revokedBy?: T;
   lastCheckInAt?: T;
   lastCheckInHost?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "builds_select".
+ */
+export interface BuildsSelect<T extends boolean = true> {
+  client?: T;
+  label?: T;
+  status?: T;
+  configVersion?: T;
+  configNumber?: T;
+  templateVersion?: T;
+  licenceId?: T;
+  requestedBy?: T;
+  rebuildOf?: T;
+  runUrl?: T;
+  startedAt?: T;
+  finishedAt?: T;
+  error?: T;
+  zipKey?: T;
+  zipName?: T;
+  size?: T;
+  sha256?: T;
+  commit?: T;
   updatedAt?: T;
   createdAt?: T;
 }

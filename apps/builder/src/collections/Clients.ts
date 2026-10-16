@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto'
 import type { CollectionConfig } from 'payload'
 
 import { isOwner, nobody } from '../access/owner'
+import { triggerBuild } from '../endpoints/builds'
 import { saveConfig } from '../endpoints/configs'
 import { issueLicence } from '../endpoints/licences'
 import { auditCollectionChange } from '../hooks/audit'
@@ -40,12 +41,17 @@ export const Clients: CollectionConfig = {
             path: '/licences',
             tab: { label: 'Licences', href: '/licences', order: 300 },
           },
+          builds: {
+            Component: '/components/Builds#BuildsView',
+            path: '/builds',
+            tab: { label: 'Builds', href: '/builds', order: 400 },
+          },
         },
       },
     },
   },
   defaultSort: 'name',
-  endpoints: [saveConfig, issueLicence],
+  endpoints: [saveConfig, issueLicence, triggerBuild],
   access: {
     read: isOwner,
     create: isOwner,

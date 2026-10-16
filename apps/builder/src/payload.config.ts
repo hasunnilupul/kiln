@@ -5,6 +5,7 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 
 import { AuditLog } from './collections/AuditLog'
+import { Builds } from './collections/Builds'
 import { ClientConfigs } from './collections/ClientConfigs'
 import { Clients } from './collections/Clients'
 import { Licences } from './collections/Licences'
@@ -45,7 +46,7 @@ export default buildConfig({
     if (isProductionRuntime()) licenceKeys()
     await seedOwner(payload)
   },
-  collections: [Clients, ClientConfigs, Licences, Users, AuditLog, LoginAttempts],
+  collections: [Clients, ClientConfigs, Licences, Builds, Users, AuditLog, LoginAttempts],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

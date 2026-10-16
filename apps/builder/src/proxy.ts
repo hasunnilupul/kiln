@@ -4,7 +4,11 @@ import { clientIp, isAllowed, parseAllowlist } from './lib/client-ip'
 
 type Ranges = ReturnType<typeof parseAllowlist>
 
-const LICENCE_CHECK_PATH = '/api/licence-check'
+/**
+ * Routes callers reach from anywhere, each with its own credential: POS licence check-ins (the
+ * signed licence, BR-32) and the build workflow on GitHub's runners (the build token, BR-21).
+ */
+const OPEN_ROUTES = [/^\/api\/licence-check$/, /^\/api\/builds\/\d+\/(job|callback)$/]
 
 let cached: { value: string | undefined; ranges: Ranges } | undefined
 
@@ -17,13 +21,11 @@ function allowlist(): Ranges {
 
 /**
  * Optional IP allowlist (BR-03): with `BUILDER_IP_ALLOWLIST` set, every page and API route except
- * the licence check-in answers 403 to other addresses. An invalid allowlist fails closed; `onInit` also refuses to start with
+ * the open routes above answers 403 to other addresses. An invalid allowlist fails closed; `onInit` also refuses to start with
  * one, so this only matters if the variable changes under a running process.
  */
 export function proxy(request: NextRequest) {
-  // Client POS servers check their licence in from anywhere (BR-32); the signed licence they
-  // send is the credential, so this one route is not limited to owner addresses.
-  if (request.nextUrl.pathname === LICENCE_CHECK_PATH) return
+  if (OPEN_ROUTES.some((route) => route.test(request.nextUrl.pathname))) return
 
   let ranges: Ranges
   try {

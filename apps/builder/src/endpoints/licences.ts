@@ -182,6 +182,34 @@ export const downloadLicence = jsonEndpoint({
   },
 })
 
+/**
+ * The licence a new build ships: the client's newest licence that is not superseded, revoked or
+ * expired, or null when there is none.
+ */
+export async function currentLicence(
+  req: PayloadRequest,
+  clientId: number,
+  now: Date = new Date(),
+): Promise<Licence | null> {
+  const { docs } = await req.payload.find({
+    collection: 'licences',
+    where: {
+      and: [
+        { client: { equals: clientId } },
+        { supersededBy: { exists: false } },
+        { revokedAt: { exists: false } },
+        { expiresAt: { greater_than: now.toISOString() } },
+      ],
+    },
+    sort: '-issuedAt',
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+    req,
+  })
+  return docs[0] ?? null
+}
+
 async function findLicence(req: PayloadRequest, id: number): Promise<Licence> {
   const licence = await req.payload
     .findByID({ collection: 'licences', id, depth: 0, overrideAccess: true, req })

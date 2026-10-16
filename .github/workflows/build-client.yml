@@ -1,0 +1,104 @@
+name: Build client
+run-name: Client build ${{ inputs.build_id }}
+
+# Dispatched by the builder (BR-20) through the GitHub API, never by hand. Fetches the job with
+# the build's short-lived token, builds the template tag with scripts/build-client.ts, uploads the
+# zip to R2 and reports back (BR-21, BR-22). See docs/requirements-and-specification.md,
+# "Build pipeline and zip artifact".
+#
+# Repository settings:
+#   variable BUILDER_URL                     the builder's public base URL
+#   secrets  R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_id:
+        description: Builder build id
+        required: true
+        type: string
+      token:
+        description: Short-lived build token from the builder
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: client-build-${{ inputs.build_id }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    # Inputs reach scripts only through env, never interpolated into commands.
+    env:
+      BUILDER_URL: ${{ vars.BUILDER_URL }}
+      BUILD_ID: ${{ inputs.build_id }}
+      BUILD_TOKEN: ${{ inputs.token }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      JOB_DIR: ${{ runner.temp }}/kiln-job
+    steps:
+      - name: Hide the build token in logs
+        run: |
+          [[ "$BUILD_ID" =~ ^[0-9]+$ ]] || { echo "::error::build_id must be a number"; exit 1; }
+          echo "::add-mask::$BUILD_TOKEN"
+
+      # Full history and tags: build-client.ts checks the template tag out into a worktree.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Fetch the build job and report "building"
+        id: job
+        run: pnpm exec tsx scripts/remote-build.ts start
+
+      - name: Build the client zip
+        env:
+          TEMPLATE_VERSION: ${{ steps.job.outputs.template_version }}
+          CONFIG_VERSION: ${{ steps.job.outputs.config_version }}
+          LICENCE_SERVER: ${{ steps.job.outputs.licence_server }}
+        run: |
+          pnpm build:client \
+            --config "$JOB_DIR/client.config.json" \
+            --licence "$JOB_DIR/licence.json" \
+            --public-key "$JOB_DIR/public.pem" \
+            --licence-server "$LICENCE_SERVER" \
+            --ref "$TEMPLATE_VERSION" \
+            --template-version "$TEMPLATE_VERSION" \
+            --config-version "$CONFIG_VERSION" \
+            --out dist-clients \
+            | tail -n 1 > "$JOB_DIR/build-summary.json"
+
+      - name: Plan the upload
+        id: upload
+        run: pnpm exec tsx scripts/remote-build.ts upload-plan
+
+      - name: Upload the zip to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          ZIP_PATH: ${{ steps.upload.outputs.zip_path }}
+          ZIP_KEY: ${{ steps.upload.outputs.zip_key }}
+        run: |
+          endpoint="https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+          aws s3 cp "$ZIP_PATH" "s3://$R2_BUCKET/$ZIP_KEY" --endpoint-url "$endpoint" --no-progress
+          aws s3 cp "$ZIP_PATH.sha256" "s3://$R2_BUCKET/$ZIP_KEY.sha256" --endpoint-url "$endpoint" --no-progress
+
+      - name: Report "succeeded"
+        run: pnpm exec tsx scripts/remote-build.ts succeeded
+
+      - name: Report "failed"
+        if: failure()
+        run: pnpm exec tsx scripts/remote-build.ts failed

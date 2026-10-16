@@ -69,6 +69,17 @@ pnpm build:client --config packages/client-config/examples/acme-mart.client.conf
 
 It checks out the commit (`--ref`, default `HEAD`) into a temporary worktree, so uncommitted changes are not included and your working copy is untouched. It writes `dist-clients/<slug>-pos-<template version>-c<config version>.zip` and a `.sha256` next to it, and prints a JSON summary on the last line. The zip contains the compiled, obfuscated server with its dependencies (no TypeScript, source maps or native modules), `client.config.json`, `licence.json`, `.env.example`, `start.sh`, `start.bat` and `README.txt`, and runs anywhere with Node.js 22.9+ and PostgreSQL.
 
-`--dev-licence` signs a throwaway licence for `localhost` that lasts 30 days, for testing only. Real builds pass the builder's signed licence and public key: `--licence licence.json --public-key public.pem`. Other options: `--template-version`, `--config-version`, `--out`, `--keep-workdir`.
+`--dev-licence` signs a throwaway licence for `localhost` that lasts 30 days, for testing only. Real builds pass the builder's signed licence and public key: `--licence licence.json --public-key public.pem`, plus `--licence-server <builder URL>` for the daily licence check-in. Other options: `--template-version`, `--config-version`, `--out`, `--keep-workdir`.
+
+### Builds from the builder
+
+The client's **Builds** tab picks a config version and a template version (a git tag) and dispatches `.github/workflows/build-client.yml` through the GitHub API with the build id and a 3-hour build token. The workflow fetches the job (config, licence, public key) from `/api/builds/:id/job`, reports `building`, runs `build-client.ts` at the tag, uploads the zip and its `.sha256` to R2 under `builds/<client-slug>/`, and reports `succeeded` (size, checksum, commit) or `failed` to `/api/builds/:id/callback`. Builds that never report back are marked failed when their token expires. `scripts/remote-build.ts` is the workflow's side of these calls.
+
+One-time setup:
+
+1. Tag a template version, e.g. `git tag v1.0.0 && git push --tags`; only tags can be built.
+2. In the GitHub repository: variable `BUILDER_URL` (the builder's public base URL) and secrets `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` (a private bucket).
+3. A fine-grained personal access token for this repository only, with **Actions: read and write** and **Contents: read**.
+4. In the builder's environment: `GITHUB_TOKEN` (that token), `GITHUB_REPOSITORY` (`owner/name`), `BUILDER_PUBLIC_URL`, and `LICENCE_SIGNING_KEY`. Optional: `GITHUB_WORKFLOW_FILE` (default `build-client.yml`), `GITHUB_WORKFLOW_REF` (default `main`, the branch whose workflow and build script run).
 
 `.github/workflows/client-build.yml` builds the example client on Linux, then runs that zip on clean Linux and Windows runners (only Node.js and PostgreSQL) and checks health, licence, sign-in and branding with `scripts/smoke-check-client.mjs`.

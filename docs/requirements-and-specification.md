@@ -486,7 +486,7 @@ Exit: one command turns an example config into a zip that runs on both platforms
 - [x] `apps/builder` with owner login, TOTP 2FA, rate limiting, audit log
 - [x] Clients, setup wizard, versioned configs with diff
 - [x] Licence issuing, renewal, revocation, with daily POS check-in
-- [ ] `build-client.yml` workflow triggered via the GitHub API with signed callbacks
+- [x] `build-client.yml` workflow triggered via the GitHub API with signed callbacks
 - [ ] R2 upload, build history, 15-minute signed download links
 - [ ] Branding logo upload in the setup wizard (needs the builder's file storage)
 
