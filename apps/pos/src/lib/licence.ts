@@ -1,20 +1,35 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import type { ModulesConfig } from '@kiln/client-config'
-import { effectiveModules, type LicencePayload } from '@kiln/licence'
-import { verifyLicence, type LicenceFailureReason } from '@kiln/licence/verify'
+import { effectiveModules, licenceFileSchema, type LicencePayload } from '@kiln/licence'
+import { readSignedLicence, verifyLicence, type LicenceFailureReason } from '@kiln/licence/verify'
 import type { Payload } from 'payload'
 
-import { LICENCE_PUBLIC_KEY_PEM } from './licence-public-key'
+import { callLicenceServer, decideCheckIn } from './licence-check-in'
+import { LICENCE_PUBLIC_KEY_PEM, LICENCE_SERVER_URL } from './licence-public-key'
 import { isBuildPhase, isProductionRuntime } from './runtime'
 
 export const LICENCE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 
-export type LicenceProblem = LicenceFailureReason | 'missing' | 'no_public_key' | 'client_mismatch'
+export type LicenceProblem =
+  | LicenceFailureReason
+  | 'missing'
+  | 'no_public_key'
+  | 'client_mismatch'
+  | 'revoked'
+  | 'check_in_overdue'
+
+/** The last online check-in (BR-32), for the admin banner. */
+export interface CheckInInfo {
+  lastConfirmedAt: string
+  /** Set while check-ins fail: when the grace period ends and the POS locks. */
+  lockAt?: string
+  failing?: string
+}
 
 export type LicenceState =
-  | { status: 'valid'; licence: LicencePayload; checkedAt: string }
+  | { status: 'valid'; licence: LicencePayload; checkedAt: string; checkIn?: CheckInInfo }
   | { status: 'invalid'; reason: LicenceProblem; message: string; checkedAt: string }
   /** Development without `licence.json`: everything the settings enable is available. */
   | { status: 'unlicensed-development'; checkedAt: string }
@@ -114,15 +129,124 @@ export function evaluateLicence(inputs: LicenceInputs): LicenceState {
   return { status: 'valid', licence: result.licence, checkedAt: now.toISOString() }
 }
 
-/** Where the licence and its key come from. Outside production a key may come from the env. */
+/**
+ * Where the licence, its key and the licence server come from. Outside production the key and
+ * server may come from the env; production uses only what the build embedded.
+ */
 export function licenceSources(env: NodeJS.ProcessEnv = process.env) {
   const production = isProductionRuntime(env)
   const envKey = env.LICENCE_PUBLIC_KEY?.replace(/\\n/g, '\n').trim()
+  const envServer = env.LICENCE_SERVER_URL?.trim()
+  const file = path.resolve(env.LICENCE_PATH?.trim() || 'licence.json')
   return {
     production,
-    file: path.resolve(env.LICENCE_PATH?.trim() || 'licence.json'),
+    file,
+    /** The builder's last signed check-in answer, kept next to the licence. */
+    statusFile: path.join(path.dirname(file), 'licence-status.json'),
     publicKeyPem: production || !envKey ? LICENCE_PUBLIC_KEY_PEM : envKey,
     publicUrl: env.PUBLIC_URL?.trim() || (production ? '' : `http://localhost:${env.PORT || 3000}`),
+    /** Empty means offline-only checks, e.g. a build made by hand with --dev-licence. */
+    serverUrl: production || !envServer ? LICENCE_SERVER_URL : envServer,
+  }
+}
+
+/** Replaces `file` in one step, so a crash never leaves half a licence. */
+async function writeAtomic(file: string, text: string): Promise<void> {
+  const temp = `${file}.${process.pid}.tmp`
+  await writeFile(temp, text)
+  await rename(temp, file)
+}
+
+/**
+ * Online check-in (BR-32) for a licence signed by this POS's key: confirms it, installs a
+ * renewal, records a revocation, or applies the grace period when the builder is unreachable.
+ */
+async function checkIn(
+  payload: Payload,
+  sources: ReturnType<typeof licenceSources>,
+  inputs: LicenceInputs & { fileText: string },
+  local: LicenceState,
+  fetchImpl: typeof fetch,
+): Promise<LicenceState> {
+  let presented: ReturnType<typeof readSignedLicence>
+  try {
+    presented = readSignedLicence(inputs.fileText, inputs.publicKeyPem)
+  } catch {
+    return local
+  }
+  if (!presented.valid) return local
+  if (inputs.clientId && presented.licence.clientId !== inputs.clientId) return local
+
+  const now = inputs.now ?? new Date()
+  let host = ''
+  try {
+    host = new URL(inputs.publicUrl).hostname
+  } catch {
+    // Reported by the licence check itself.
+  }
+  const verdict = decideCheckIn({
+    licence: presented.licence,
+    outcome: await callLicenceServer(sources.serverUrl, inputs.fileText, host, fetchImpl),
+    storedStatusText: await readOptional(sources.statusFile),
+    publicKeyPem: inputs.publicKeyPem,
+    now,
+  })
+  const confirmedNow: CheckInInfo = { lastConfirmedAt: now.toISOString() }
+
+  switch (verdict.kind) {
+    case 'confirmed':
+      await writeAtomic(sources.statusFile, verdict.statusText).catch((error: unknown) =>
+        payload.logger.error({ err: error }, 'Could not store the licence check-in'),
+      )
+      return local.status === 'valid' ? { ...local, checkIn: confirmedNow } : local
+
+    case 'revoked':
+      await writeAtomic(sources.statusFile, verdict.statusText).catch((error: unknown) =>
+        payload.logger.error({ err: error }, 'Could not store the licence revocation'),
+      )
+      return invalid('revoked', 'The provider revoked this licence', now)
+
+    case 'renewed': {
+      const fileText = `${JSON.stringify(licenceFileSchema.parse(verdict.licence), null, 2)}\n`
+      const renewed = evaluateLicence({ ...inputs, fileText })
+      if (renewed.status !== 'valid') {
+        payload.logger.warn(
+          `The provider sent a new licence that this POS cannot use: ${
+            renewed.status === 'invalid' ? renewed.message : renewed.status
+          }`,
+        )
+        return local
+      }
+      try {
+        await writeAtomic(sources.file, fileText)
+        await rm(sources.statusFile, { force: true })
+      } catch (error) {
+        payload.logger.error(
+          { err: error },
+          'Could not save the renewed licence; using it until restart',
+        )
+      }
+      payload.logger.info(`Installed renewed licence ${renewed.licence.licenceId}`)
+      return { ...renewed, checkIn: confirmedNow }
+    }
+
+    case 'grace':
+      payload.logger.warn(
+        `Licence check-in failed (${verdict.message}); the POS locks at ${verdict.lockAt}`,
+      )
+      return local.status === 'valid'
+        ? {
+            ...local,
+            checkIn: {
+              lastConfirmedAt: verdict.lastConfirmedAt,
+              lockAt: verdict.lockAt,
+              failing: verdict.message,
+            },
+          }
+        : local
+
+    case 'overdue':
+      return local.status === 'valid' ? invalid('check_in_overdue', verdict.message, now) : local
   }
 }
 
@@ -135,20 +259,35 @@ async function readOptional(file: string): Promise<string | null> {
   }
 }
 
-/** Reads `licence.json`, verifies it and stores the result (FR-04). */
+/**
+ * Reads `licence.json`, verifies it (FR-04), checks it in with the licence server when the
+ * build names one (BR-32), and stores the result.
+ */
 export async function checkLicence(
   payload: Payload,
   env: NodeJS.ProcessEnv = process.env,
+  fetchImpl: typeof fetch = fetch,
 ): Promise<LicenceState> {
   const sources = licenceSources(env)
   const settings = await payload.findGlobal({ slug: 'system-settings', overrideAccess: true })
-  const state = evaluateLicence({
+  const inputs: LicenceInputs = {
     fileText: await readOptional(sources.file),
     publicKeyPem: sources.publicKeyPem,
     publicUrl: sources.publicUrl,
     production: sources.production,
     clientId: settings.clientId,
-  })
+  }
+  let state = evaluateLicence(inputs)
+  // Also when the local licence has expired or was revoked: the answer may carry a renewal.
+  if (sources.serverUrl && inputs.fileText !== null && state.status !== 'unlicensed-development') {
+    state = await checkIn(
+      payload,
+      sources,
+      { ...inputs, fileText: inputs.fileText },
+      state,
+      fetchImpl,
+    )
+  }
   setLicenceState(state)
 
   if (state.status === 'valid') {

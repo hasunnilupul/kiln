@@ -12,6 +12,7 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "licence:dev": "tsx scripts/dev-licence.ts",
+    "licence:keygen": "tsx scripts/licence-keygen.ts",
     "build:client": "turbo run build --filter=@kiln/client-config --filter=@kiln/licence --output-logs=errors-only && tsx scripts/build-client.ts"
   },
   "packageManager": "pnpm@10.34.6",

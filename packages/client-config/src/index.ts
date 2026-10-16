@@ -16,6 +16,15 @@ export {
   type RegisterConfig,
   type TaxRateConfig,
 } from './schema.js'
+export { diffClientConfigs, type ConfigChange } from './diff.js'
+export {
+  WIZARD_STEPS,
+  newClientConfig,
+  validateDraft,
+  type DraftValidation,
+  type StepIssue,
+  type WizardStepId,
+} from './wizard.js'
 export {
   ClientConfigError,
   parseClientConfig,
