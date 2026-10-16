@@ -8,6 +8,7 @@ import {
 } from 'payload'
 import { z } from 'zod'
 
+import { LicenceKeyNotConfigured } from '../lib/licence-key'
 import type { User } from '../payload-types'
 
 /** An error with an HTTP status and a stable code the builder UI can branch on. */
@@ -117,6 +118,10 @@ function errorResponse(req: PayloadRequest, error: unknown): Response {
   }
   if (error instanceof z.ZodError) {
     return reply(400, 'invalid_request', 'The request is invalid', z.flattenError(error))
+  }
+  if (error instanceof LicenceKeyNotConfigured) {
+    req.payload.logger.error(error.message)
+    return reply(503, 'licence_key_not_configured', error.message)
   }
   req.payload.logger.error({ err: error }, 'Builder endpoint failed')
   return reply(500, 'internal_error', 'Something went wrong')
