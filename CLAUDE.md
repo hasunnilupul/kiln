@@ -131,7 +131,7 @@ Builder sign-in goes only through `POST /api/auth/sign-in` (password + TOTP); Pa
 
 ## Current status
 
-Milestones M0 (foundation), M1 (`client-config`, `pricing`, `licence` packages) M2 (POS data model, storage, migrations, first-boot seeding, licence checks) M3 (shifts, checkout, payments, refunds, receipts, reports, cashier screen) and M4 (scripts/build-client.ts, client-build workflow) are done; next is M5. Roadmap: M0 foundation → M1 config, pricing and licence packages → M2 POS data model and first boot → M3 checkout, payments, shifts, refunds → M4 build script → M5 builder app and remote builds → M6 hardening and first client readiness.
+Milestones M0 (foundation), M1 (`client-config`, `pricing`, `licence` packages) M2 (POS data model, storage, migrations, first-boot seeding, licence checks) M3 (shifts, checkout, payments, refunds, receipts, reports, cashier screen), M4 (scripts/build-client.ts, client-build workflow) and M5 (builder app, licences, remote builds, signed downloads) are done; next is M6. Roadmap: M0 foundation → M1 config, pricing and licence packages → M2 POS data model and first boot → M3 checkout, payments, shifts, refunds → M4 build script → M5 builder app and remote builds → M6 hardening and first client readiness.
 
 ## Out of scope for the MVP
 
