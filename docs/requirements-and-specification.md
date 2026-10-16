@@ -318,7 +318,7 @@ acme-mart-pos-v1.0.0-c3.zip
 - No secrets in the zip: only `.env.example`.
 - Avoid native modules (no `sharp`) so one zip runs on Linux, macOS and Windows; images are resized client-side before upload.
 - The required Node.js version is pinned in `.nvmrc` and stated in `README.txt`.
-- Upgrades: stop the app, replace everything except `.env`, start it; migrations run automatically.
+- Upgrades: stop the app, replace everything except `.env` and `licence-status.json`, start it; migrations run automatically.
 
 ## Security and IP protection
 
@@ -330,12 +330,16 @@ Source code and setup logic stay in the builder and the private repo; a delivere
 - Builds ship no TypeScript source, tests or source maps; the server bundle is obfuscated.
 - `licence.json` holds client ID, allowed hosts, modules, max registers, issued and expiry dates, signed with Ed25519.
 - The POS embeds only the public key; it verifies the signature, expiry and host on startup and every 24 hours.
+- Licences run for a trial (1 month), 3 months or 12 months. Renewing issues a new licence that supersedes the old one; licences are never edited.
+- Each check also posts `licence.json` to the builder's `/api/licence-check`, which answers with a signed status: active, revoked, or superseded with the newer licence attached. The POS installs renewals itself and stops on revocation. Answers older than 10 minutes are rejected, so they cannot be replayed.
+- If the builder cannot be reached, the POS keeps working for 7 days from the last signed "active" answer (or the licence's issue date), warning in the admin, then stops. Answers are stored in `licence-status.json`; they are signed, so editing the file cannot extend the grace, and a stored revocation survives restarts.
+- Builds embed the builder's URL for the check-in; a build without it (e.g. `--dev-licence`) checks offline only.
 - Modules not in the licence stay disabled even if enabled in settings; registers beyond `maxRegisters` cannot open shifts.
 - Every client signs a software licence agreement forbidding copying, reverse engineering and redistribution.
 
 **Builder security**
 
-- Owner-only access with 2FA, rate limiting, optional IP allowlist and full audit log.
+- Owner-only access with 2FA, rate limiting, optional IP allowlist and full audit log. The licence check-in is the only route open to any address; a licence signed by the builder is its credential.
 - The licence signing key, GitHub token and R2 credentials are held as environment secrets, never in the database.
 - Builder-to-workflow and workflow-to-builder calls are authenticated with short-lived HMAC-signed tokens.
 - Build downloads use 15-minute signed URLs; the R2 bucket is private.
@@ -481,7 +485,7 @@ Exit: one command turns an example config into a zip that runs on both platforms
 
 - [x] `apps/builder` with owner login, TOTP 2FA, rate limiting, audit log
 - [x] Clients, setup wizard, versioned configs with diff
-- [ ] Licence issuing, renewal, revocation
+- [x] Licence issuing, renewal, revocation, with daily POS check-in
 - [ ] `build-client.yml` workflow triggered via the GitHub API with signed callbacks
 - [ ] R2 upload, build history, 15-minute signed download links
 - [ ] Branding logo upload in the setup wizard (needs the builder's file storage)
@@ -515,7 +519,7 @@ These are deliberately deferred; none blocks M0–M4.
 **Open questions**
 
 - [ ] Product name and licence agreement wording
-- [ ] Licence checks: offline only, or also an online check-in with a grace period?
+- [x] Licence checks: offline only, or also an online check-in with a grace period? Decided: daily online check-in with the builder and a 7-day grace period (see Security and IP protection)
 - [ ] Pricing model for clients: one-time licence, subscription, or per register
 - [ ] Tax rules needed by the first clients: single rate only, or multiple and compound taxes?
 - [ ] Receipt printers the first clients use, and whether browser printing is acceptable on them

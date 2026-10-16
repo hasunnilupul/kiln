@@ -2,7 +2,10 @@
  * Config in, zip out (M4): builds a client's POS from a committed template version.
  *
  *   pnpm build:client --config <client.config.json> --licence <licence.json> --public-key <public.pem>
+ *                     [--licence-server <builder base URL>]                # daily check-in (BR-32)
  *   pnpm build:client --config <client.config.json> --dev-licence        # local testing only
+ *
+ * Without --licence-server the build checks its licence offline only.
  *
  * Steps: validate the config and licence → check out the template at --ref into a temporary git
  * worktree → install with a flat node_modules → inject the licence public key and branding
@@ -52,6 +55,7 @@ const { values: args } = parseArgs({
     config: { type: 'string' },
     licence: { type: 'string' },
     'public-key': { type: 'string' },
+    'licence-server': { type: 'string' },
     'dev-licence': { type: 'boolean', default: false },
     ref: { type: 'string', default: 'HEAD' },
     'template-version': { type: 'string' },
@@ -189,6 +193,20 @@ if (licence.clientId !== config.client.id) {
 console.error(
   `  ${licence.licenceId}, hosts ${licence.allowedHosts.join(', ')}, until ${licence.expiresAt}`,
 )
+let licenceServer = ''
+if (args['licence-server']) {
+  if (args['dev-licence']) fail('A --dev-licence build cannot check in with a licence server')
+  try {
+    const url = new URL(args['licence-server'])
+    if (url.protocol !== 'https:' && url.hostname !== 'localhost') throw new Error('not https')
+    licenceServer = url.origin
+  } catch {
+    fail(`--licence-server must be an https:// URL, got "${args['licence-server']}"`)
+  }
+  console.error(`  Checks in daily with ${licenceServer}`)
+} else {
+  console.error('  No --licence-server: this build checks its licence offline only')
+}
 
 // 3. Template version: a git tag in production builds (BR-20, BR-22).
 const commit = output('git', ['rev-parse', '--verify', `${args.ref}^{commit}`], repoRoot)
@@ -217,7 +235,13 @@ try {
   const app = path.join(source, 'apps/pos')
   writeFileSync(
     path.join(app, 'src/lib/licence-public-key.ts'),
-    `/** The builder's Ed25519 public key, written by scripts/build-client.ts (BR-31). */\nexport const LICENCE_PUBLIC_KEY_PEM = ${JSON.stringify(publicKeyPem.trim())}\n`,
+    [
+      `/** The builder's Ed25519 public key, written by scripts/build-client.ts (BR-31). */`,
+      `export const LICENCE_PUBLIC_KEY_PEM = ${JSON.stringify(publicKeyPem.trim())}`,
+      `/** The builder's licence check-in URL, written by scripts/build-client.ts (BR-32). */`,
+      `export const LICENCE_SERVER_URL = ${JSON.stringify(licenceServer)}`,
+      '',
+    ].join('\n'),
   )
   let logo: { path: string; type: string } | null = null
   if (logoSource) {
@@ -340,7 +364,10 @@ try {
   writeFileSync(path.join(pkg, 'start.bat'), startBat)
   writeFileSync(
     path.join(pkg, 'README.txt'),
-    readmeTxt({ config, licence, templateVersion, configVersion, zipName }).replace(/\n/g, '\r\n'),
+    readmeTxt({ config, licence, templateVersion, configVersion, zipName, licenceServer }).replace(
+      /\n/g,
+      '\r\n',
+    ),
   )
 
   // 9. Zip and checksum (BR-22).

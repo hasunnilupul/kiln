@@ -5,18 +5,12 @@ import { z } from 'zod'
 import { writeAudit } from '../hooks/audit'
 import { execute, sql } from '../lib/db'
 import type { Client, ClientConfig as ConfigVersion } from '../payload-types'
-import { ApiError, jsonEndpoint, requireOwner, type OwnerUser } from './http'
+import { ApiError, jsonEndpoint, requireOwner, routeId, type OwnerUser } from './http'
 
 const saveBody = z.object({
   config: z.unknown(),
   note: z.string().trim().max(200).optional(),
 })
-
-function routeId(req: PayloadRequest): number {
-  const parsed = z.coerce.number().int().positive().safeParse(req.routeParams?.id)
-  if (!parsed.success) throw new ApiError(400, 'invalid_id', 'Invalid id')
-  return parsed.data
-}
 
 /** The client's newest config version, or null before the first save. */
 export async function latestConfig(

@@ -7,11 +7,14 @@ import { fileURLToPath } from 'url'
 import { AuditLog } from './collections/AuditLog'
 import { ClientConfigs } from './collections/ClientConfigs'
 import { Clients } from './collections/Clients'
+import { Licences } from './collections/Licences'
 import { LoginAttempts } from './collections/LoginAttempts'
 import { Users } from './collections/Users'
+import { licenceCheck } from './endpoints/licences'
 import { authEndpoints } from './endpoints/sign-in'
 import { parseAllowlist } from './lib/client-ip'
-import { isBuildPhase } from './lib/runtime'
+import { licenceKeys } from './lib/licence-key'
+import { isBuildPhase, isProductionRuntime } from './lib/runtime'
 import { seedOwner } from './lib/seed-owner'
 import { migrations } from './migrations'
 
@@ -31,16 +34,18 @@ export default buildConfig({
       },
     },
   },
-  endpoints: [...authEndpoints],
+  endpoints: [...authEndpoints, licenceCheck],
   // The builder has no GraphQL clients; turning it off leaves one API surface to secure.
   graphQL: { disable: true },
-  // Runs after prodMigrations: refuses to start with an invalid IP allowlist (BR-03), then
-  // creates the first owner from the environment (BR-01).
+  // Runs after prodMigrations: refuses to start with an invalid IP allowlist (BR-03) or, in
+  // production, without a usable licence signing key (BR-31); then creates the first owner
+  // from the environment (BR-01).
   onInit: async (payload) => {
     parseAllowlist(process.env.BUILDER_IP_ALLOWLIST)
+    if (isProductionRuntime()) licenceKeys()
     await seedOwner(payload)
   },
-  collections: [Clients, ClientConfigs, Users, AuditLog, LoginAttempts],
+  collections: [Clients, ClientConfigs, Licences, Users, AuditLog, LoginAttempts],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

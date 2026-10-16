@@ -1,4 +1,11 @@
-import { addDataAndFileToRequest, type Endpoint, type PayloadRequest } from 'payload'
+import {
+  addDataAndFileToRequest,
+  commitTransaction,
+  initTransaction,
+  killTransaction,
+  type Endpoint,
+  type PayloadRequest,
+} from 'payload'
 import { z } from 'zod'
 
 import type { User } from '../payload-types'
@@ -37,6 +44,29 @@ export function requireOwner(req: PayloadRequest): OwnerUser {
     throw new ApiError(401, 'unauthenticated', 'Sign in first')
   }
   return user
+}
+
+/** The positive integer `:id` route parameter. */
+export function routeId(req: PayloadRequest): number {
+  const parsed = z.coerce.number().int().positive().safeParse(req.routeParams?.id)
+  if (!parsed.success) throw new ApiError(400, 'invalid_id', 'Invalid id')
+  return parsed.data
+}
+
+/**
+ * Runs `fn` in the transaction on `req`, starting one if needed; rolls back on any error. Nested
+ * calls join the outer transaction.
+ */
+export async function inTransaction<T>(req: PayloadRequest, fn: () => Promise<T>): Promise<T> {
+  const owner = await initTransaction(req)
+  try {
+    const result = await fn()
+    if (owner) await commitTransaction(req)
+    return result
+  } catch (error) {
+    if (owner) await killTransaction(req)
+    throw error
+  }
 }
 
 async function readBody(req: PayloadRequest): Promise<unknown> {

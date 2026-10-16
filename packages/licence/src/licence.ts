@@ -49,6 +49,32 @@ export const licenceFileSchema = z.strictObject({
 
 export type LicenceFile = z.output<typeof licenceFileSchema>
 
+export const LICENCE_STATUSES = ['active', 'revoked', 'superseded'] as const
+export type LicenceStatusValue = (typeof LICENCE_STATUSES)[number]
+
+/**
+ * The builder's answer to a POS licence check-in (BR-32), signed like a licence. The `type`
+ * field keeps a status from ever verifying as a licence, and the other way round.
+ */
+export const licenceStatusSchema = z
+  .strictObject({
+    type: z.literal('licence-status'),
+    version: z.literal(LICENCE_PAYLOAD_VERSION),
+    /** The licence the POS checked in with. */
+    licenceId: z.string().min(1).max(64),
+    status: z.enum(LICENCE_STATUSES),
+    /** When the builder answered; a stale answer is rejected so it cannot be replayed. */
+    checkedAt: z.iso.datetime(),
+    /** For `superseded`: the newer licence, which the POS verifies like any `licence.json`. */
+    licence: licenceFileSchema.optional(),
+  })
+  .refine((status) => status.status !== 'superseded' || status.licence !== undefined, {
+    path: ['licence'],
+    message: 'A superseded status carries the newer licence',
+  })
+
+export type LicenceStatus = z.output<typeof licenceStatusSchema>
+
 /** Modules a settings toggle may turn on: anything not in the licence stays off. */
 export function effectiveModules(enabled: ModulesConfig, licence: LicencePayload): ModulesConfig {
   const licensed = new Set(licence.modules)

@@ -90,6 +90,7 @@ pnpm test:e2e                # Playwright e2e: own server on :3100 and a fresh <
 pnpm format                  # Prettier write; format:check in CI
 pnpm --filter pos payload migrate:create <name>   # generate a migration after schema changes
 pnpm licence:dev             # throwaway localhost licence + public key for development
+pnpm licence:keygen          # new builder licence signing key (LICENCE_SIGNING_KEY); printed, never written
 pnpm build:client --config <client.config.json> --dev-licence   # client zip from HEAD into dist-clients/ (README: Client builds)
 ```
 
@@ -109,6 +110,7 @@ Local development uses PostgreSQL via `docker compose up -d db` (development onl
 | `PUBLIC_URL` | Base URL; must match the licence's allowed hosts |
 | `LICENCE_PATH` | Optional; defaults to `licence.json` in the working directory |
 | `LICENCE_PUBLIC_KEY` | Development only (from `pnpm licence:dev`); production uses the key embedded in `src/lib/licence-public-key.ts` |
+| `LICENCE_SERVER_URL` | Development only: builder URL for the daily licence check-in; production uses the URL embedded at build time (empty means offline-only checks) |
 | `PORT` | Defaults to 3000 |
 
 ## Environment variables (builder)
@@ -118,7 +120,8 @@ Local development uses PostgreSQL via `docker compose up -d db` (development onl
 | `DATABASE_URI` | PostgreSQL connection string |
 | `PAYLOAD_SECRET` | At least 32 random bytes; also seals owners' TOTP secrets, so rotating it forces TOTP re-enrolment |
 | `BUILDER_OWNER_EMAIL`, `BUILDER_OWNER_PASSWORD` | First boot creates this owner when there is none (password ≥ 16 characters); TOTP is set up on first sign-in |
-| `BUILDER_IP_ALLOWLIST` | Optional addresses/CIDR ranges (BR-03); read from `x-real-ip`/`x-forwarded-for`, so only behind a proxy that sets them |
+| `BUILDER_IP_ALLOWLIST` | Optional addresses/CIDR ranges (BR-03); read from `x-real-ip`/`x-forwarded-for`, so only behind a proxy that sets them. `/api/licence-check` is always open |
+| `LICENCE_SIGNING_KEY` | Ed25519 PKCS #8 PEM from `pnpm licence:keygen` (BR-31); required in production. Losing it means existing builds cannot be renewed; replacing it means rebuilding every client |
 
 Builder sign-in goes only through `POST /api/auth/sign-in` (password + TOTP); Payload's own login, forgot/reset-password, first-user creation and GraphQL are disabled.
 

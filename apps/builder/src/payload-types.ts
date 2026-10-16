@@ -69,6 +69,7 @@ export interface Config {
   collections: {
     clients: Client;
     'client-configs': ClientConfig;
+    licences: Licence;
     users: User;
     'audit-log': AuditLog;
     'login-attempts': LoginAttempt;
@@ -81,6 +82,7 @@ export interface Config {
   collectionsSelect: {
     clients: ClientsSelect<false> | ClientsSelect<true>;
     'client-configs': ClientConfigsSelect<false> | ClientConfigsSelect<true>;
+    licences: LicencesSelect<false> | LicencesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
     'login-attempts': LoginAttemptsSelect<false> | LoginAttemptsSelect<true>;
@@ -210,6 +212,39 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "licences".
+ */
+export interface Licence {
+  id: number;
+  client: number | Client;
+  licenceId: string;
+  term: 'trial' | '3m' | '12m';
+  allowedHosts: string[];
+  modules?: ('inventory' | 'customers' | 'discounts' | 'multiOutlet')[] | null;
+  maxRegisters: number;
+  issuedAt: string;
+  expiresAt: string;
+  issuedBy?: (number | null) | User;
+  file:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  supersededBy?: (number | null) | Licence;
+  revokedAt?: string | null;
+  revokedReason?: string | null;
+  revokedBy?: (number | null) | User;
+  lastCheckInAt?: string | null;
+  lastCheckInHost?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "audit-log".
  */
 export interface AuditLog {
@@ -276,6 +311,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'client-configs';
         value: number | ClientConfig;
+      } | null)
+    | ({
+        relationTo: 'licences';
+        value: number | Licence;
       } | null)
     | ({
         relationTo: 'users';
@@ -358,6 +397,30 @@ export interface ClientConfigsSelect<T extends boolean = true> {
   config?: T;
   note?: T;
   createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "licences_select".
+ */
+export interface LicencesSelect<T extends boolean = true> {
+  client?: T;
+  licenceId?: T;
+  term?: T;
+  allowedHosts?: T;
+  modules?: T;
+  maxRegisters?: T;
+  issuedAt?: T;
+  expiresAt?: T;
+  issuedBy?: T;
+  file?: T;
+  supersededBy?: T;
+  revokedAt?: T;
+  revokedReason?: T;
+  revokedBy?: T;
+  lastCheckInAt?: T;
+  lastCheckInHost?: T;
   updatedAt?: T;
   createdAt?: T;
 }

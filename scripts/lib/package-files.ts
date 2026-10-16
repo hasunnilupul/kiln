@@ -64,8 +64,19 @@ export function readmeTxt(options: {
   templateVersion: string
   configVersion: number
   zipName: string
+  /** The builder's URL when this build checks its licence in online (BR-32). */
+  licenceServer: string
 }): string {
-  const { config, licence, templateVersion, configVersion, zipName } = options
+  const { config, licence, templateVersion, configVersion, zipName, licenceServer } = options
+  const licenceSection = licenceServer
+    ? `  licence.json binds this build to its hosts. Once a day the POS confirms it with
+  ${licenceServer} over HTTPS, so the server needs internet access to that address.
+  Renewals arrive the same way and replace licence.json automatically. If the check cannot
+  reach the provider for 7 days, the POS stops serving until it can; the admin pages warn
+  before that. GET /api/health shows the app, database and licence status.`
+    : `  licence.json binds this build to its hosts. Renewed licences replace licence.json; the POS
+  checks it on start and every 24 hours. GET /api/health shows the app, database and licence
+  status.`
   const db = `${config.client.slug.replace(/-/g, '_')}_pos`
   return `${config.client.displayName} POS
 ${'='.repeat(config.client.displayName.length + 4)}
@@ -101,13 +112,12 @@ RUN AS A SERVICE
 
 UPGRADE
   1. Stop the POS and back up the database (below).
-  2. Replace everything in this folder with the new build EXCEPT .env.
+  2. Replace everything in this folder with the new build EXCEPT .env and
+     licence-status.json (if present).
   3. Start it again. Database changes are applied automatically on start.
 
 LICENCE
-  licence.json binds this build to its hosts. Renewed licences replace licence.json; the POS
-  checks it on start and every 24 hours. GET /api/health shows the app, database and licence
-  status.
+${licenceSection}
 
 BACKUPS
   The POS keeps all data in PostgreSQL. Back it up at least daily, and keep copies off this

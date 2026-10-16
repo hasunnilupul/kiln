@@ -4,6 +4,7 @@ import type { CollectionConfig } from 'payload'
 
 import { isOwner, nobody } from '../access/owner'
 import { saveConfig } from '../endpoints/configs'
+import { issueLicence } from '../endpoints/licences'
 import { auditCollectionChange } from '../hooks/audit'
 
 /** A stable id for configs and licences, e.g. `cl_7k2m9q4x8w1p`; never reused or changed. */
@@ -34,12 +35,17 @@ export const Clients: CollectionConfig = {
             path: '/configs',
             tab: { label: 'Config versions', href: '/configs', order: 200 },
           },
+          licences: {
+            Component: '/components/Licences#LicencesView',
+            path: '/licences',
+            tab: { label: 'Licences', href: '/licences', order: 300 },
+          },
         },
       },
     },
   },
   defaultSort: 'name',
-  endpoints: [saveConfig],
+  endpoints: [saveConfig, issueLicence],
   access: {
     read: isOwner,
     create: isOwner,
