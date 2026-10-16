@@ -5,6 +5,14 @@ export interface LicenceKeys {
   publicKeyPem: string
 }
 
+/** `LICENCE_SIGNING_KEY` is missing or unusable; endpoints answer 503 with this message. */
+export class LicenceKeyNotConfigured extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'LicenceKeyNotConfigured'
+  }
+}
+
 let cached: { value: string; keys: LicenceKeys } | undefined
 
 /**
@@ -16,10 +24,25 @@ let cached: { value: string; keys: LicenceKeys } | undefined
 export function licenceKeys(env: NodeJS.ProcessEnv = process.env): LicenceKeys {
   const value = env.LICENCE_SIGNING_KEY?.replace(/\\n/g, '\n').trim() ?? ''
   if (!value) {
-    throw new Error('LICENCE_SIGNING_KEY is not set; generate one with pnpm licence:keygen')
+    throw new LicenceKeyNotConfigured(
+      'LICENCE_SIGNING_KEY is not set; generate one with pnpm licence:keygen',
+    )
   }
   if (cached?.value !== value) {
-    cached = { value, keys: { privateKeyPem: value, publicKeyPem: publicKeyFromPrivate(value) } }
+    if (!value.startsWith('-----BEGIN PRIVATE KEY-----')) {
+      throw new LicenceKeyNotConfigured(
+        'LICENCE_SIGNING_KEY must be the whole PEM printed by pnpm licence:keygen, including the -----BEGIN PRIVATE KEY----- and -----END PRIVATE KEY----- lines',
+      )
+    }
+    let publicKeyPem: string
+    try {
+      publicKeyPem = publicKeyFromPrivate(value)
+    } catch (error) {
+      throw new LicenceKeyNotConfigured(
+        `LICENCE_SIGNING_KEY is not a usable Ed25519 private key (${(error as Error).message}); generate one with pnpm licence:keygen`,
+      )
+    }
+    cached = { value, keys: { privateKeyPem: value, publicKeyPem } }
   }
   return cached.keys
 }
