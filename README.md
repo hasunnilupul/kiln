@@ -73,13 +73,15 @@ It checks out the commit (`--ref`, default `HEAD`) into a temporary worktree, so
 
 ### Builds from the builder
 
-The client's **Builds** tab picks a config version and a template version (a git tag) and dispatches `.github/workflows/build-client.yml` through the GitHub API with the build id and a 3-hour build token. The workflow fetches the job (config, licence, public key) from `/api/builds/:id/job`, reports `building`, runs `build-client.ts` at the tag, uploads the zip and its `.sha256` to R2 under `builds/<client-slug>/`, and reports `succeeded` (size, checksum, commit) or `failed` to `/api/builds/:id/callback`. Builds that never report back are marked failed when their token expires. `scripts/remote-build.ts` is the workflow's side of these calls.
+The client's **Builds** tab picks a config version and a template version (a git tag) and dispatches `.github/workflows/build-client.yml` through the GitHub API with the build id and a 3-hour build token. The workflow fetches the job (config, licence, public key) from `/api/builds/:id/job`, reports `building`, runs `build-client.ts` at the tag, uploads the zip and its `.sha256` to R2 under `builds/<client-slug>/`, and reports `succeeded` (size, checksum, commit) or `failed` to `/api/builds/:id/callback`. The builder accepts a success only once the zip is in the bucket at the reported size. Builds that never report back are marked failed when their token expires. `scripts/remote-build.ts` is the workflow's side of these calls.
+
+**Download** on a succeeded build asks `/api/builds/:id/download` for a signed R2 link that works for 15 minutes and saves the zip under its name; the bucket stays private. Every link handed out is written to the audit log, and the build history shows how often and when each zip was last downloaded. Check the zip against the SHA-256 shown next to it before deploying.
 
 One-time setup:
 
 1. Tag a template version, e.g. `git tag v1.0.0 && git push --tags`; only tags can be built.
 2. In the GitHub repository: variable `BUILDER_URL` (the builder's public base URL) and secrets `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` (a private bucket).
 3. A fine-grained personal access token for this repository only, with **Actions: read and write** and **Contents: read**.
-4. In the builder's environment: `GITHUB_TOKEN` (that token), `GITHUB_REPOSITORY` (`owner/name`), `BUILDER_PUBLIC_URL`, and `LICENCE_SIGNING_KEY`. Optional: `GITHUB_WORKFLOW_FILE` (default `build-client.yml`), `GITHUB_WORKFLOW_REF` (default `main`, the branch whose workflow and build script run).
+4. In the builder's environment: `GITHUB_TOKEN` (that token), `GITHUB_REPOSITORY` (`owner/name`), `BUILDER_PUBLIC_URL`, `LICENCE_SIGNING_KEY`, and `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` for the same bucket (a second R2 token with **Object Read** only is enough; the workflow's token needs write). Optional: `GITHUB_WORKFLOW_FILE` (default `build-client.yml`), `GITHUB_WORKFLOW_REF` (default `main`, the branch whose workflow and build script run).
 
 `.github/workflows/client-build.yml` builds the example client on Linux, then runs that zip on clean Linux and Windows runners (only Node.js and PostgreSQL) and checks health, licence, sign-in and branding with `scripts/smoke-check-client.mjs`.

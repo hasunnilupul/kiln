@@ -1,7 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { isOwner, nobody } from '../access/owner'
-import { buildCallback, buildJob } from '../endpoints/builds'
+import { buildCallback, buildJob, downloadBuild } from '../endpoints/builds'
 
 export const BUILD_STATUSES = ['queued', 'building', 'succeeded', 'failed'] as const
 export type BuildStatus = (typeof BUILD_STATUSES)[number]
@@ -25,7 +25,7 @@ export const Builds: CollectionConfig = {
     update: nobody,
     delete: nobody,
   },
-  endpoints: [buildJob, buildCallback],
+  endpoints: [buildJob, buildCallback, downloadBuild],
   fields: [
     { name: 'client', type: 'relationship', relationTo: 'clients', required: true, index: true },
     { name: 'label', type: 'text' },

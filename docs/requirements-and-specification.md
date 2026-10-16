@@ -487,7 +487,7 @@ Exit: one command turns an example config into a zip that runs on both platforms
 - [x] Clients, setup wizard, versioned configs with diff
 - [x] Licence issuing, renewal, revocation, with daily POS check-in
 - [x] `build-client.yml` workflow triggered via the GitHub API with signed callbacks
-- [ ] R2 upload, build history, 15-minute signed download links
+- [x] R2 upload, build history, 15-minute signed download links
 - [ ] Branding logo upload in the setup wizard (needs the builder's file storage)
 
 Exit: from the browser, create a client, run the wizard, click Build and download a working zip.

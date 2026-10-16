@@ -124,6 +124,7 @@ Local development uses PostgreSQL via `docker compose up -d db` (development onl
 | `BUILDER_PUBLIC_URL` | The builder's public base URL: where the build workflow calls back and client builds check their licence in |
 | `GITHUB_TOKEN`, `GITHUB_REPOSITORY` | Fine-grained token (Actions read/write, Contents read) and `owner/name` for dispatching `build-client.yml` (BR-20); builds are unavailable without them |
 | `GITHUB_WORKFLOW_FILE`, `GITHUB_WORKFLOW_REF` | Optional; default `build-client.yml` on `main` |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | The private build bucket (BR-23): the builder checks each uploaded zip and signs 15-minute download links. A read-only R2 token is enough; builds and downloads are unavailable without them |
 | `LICENCE_SIGNING_KEY` | Ed25519 PKCS #8 PEM from `pnpm licence:keygen` (BR-31); required in production. Losing it means existing builds cannot be renewed; replacing it means rebuilding every client |
 
 Builder sign-in goes only through `POST /api/auth/sign-in` (password + TOTP); Payload's own login, forgot/reset-password, first-user creation and GraphQL are disabled.

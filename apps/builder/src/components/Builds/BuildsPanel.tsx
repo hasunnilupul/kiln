@@ -18,11 +18,17 @@ export interface BuildRow {
   size: number | null
   sha256: string | null
   rebuildOf: number | null
+  downloads: number
+  lastDownloadedAt: string | null
 }
 
 interface Props {
   archived: boolean
+  /** `/api/builds`, for downloads. */
+  buildsEndpoint: string
   configVersions: { version: number; note: string | null }[]
+  downloadsReady: boolean
+  /** `/api/clients/:id/builds`, for starting builds. */
   endpoint: string
   licence: { licenceId: string; expiresAt: string } | null
   rows: BuildRow[]
@@ -50,7 +56,9 @@ const dateTime = (iso: string) =>
 /** Start builds and follow their progress (BR-20 to BR-22, BR-24). */
 export function BuildsPanel({
   archived,
+  buildsEndpoint,
   configVersions,
+  downloadsReady,
   endpoint,
   licence,
   rows,
@@ -62,6 +70,7 @@ export function BuildsPanel({
   const [templateVersion, setTemplateVersion] = useState(templateVersions[0] ?? '')
   const [rebuildOf, setRebuildOf] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  const [downloading, setDownloading] = useState<number | null>(null)
   const [message, setMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null)
 
   const running = rows.some((row) => row.status === 'queued' || row.status === 'building')
@@ -101,6 +110,36 @@ export function BuildsPanel({
       setMessage({ kind: 'error', text: 'Could not reach the builder' })
     } finally {
       setBusy(false)
+    }
+  }
+
+  /** Asks for a fresh 15-minute link (each one is logged) and starts the download with it. */
+  async function download(row: BuildRow) {
+    setDownloading(row.id)
+    setMessage(null)
+    try {
+      const response = await fetch(`${buildsEndpoint}/${row.id}/download`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || typeof body.url !== 'string') {
+        setMessage({
+          kind: 'error',
+          text: body.error?.message ?? 'Could not create the download link',
+        })
+        return
+      }
+      window.location.assign(body.url)
+      setMessage({
+        kind: 'success',
+        text: `Downloading ${body.zipName}. Check it against SHA-256 ${body.sha256} before deploying.`,
+      })
+      router.refresh()
+    } catch {
+      setMessage({ kind: 'error', text: 'Could not reach the builder' })
+    } finally {
+      setDownloading(null)
     }
   }
 
@@ -253,17 +292,33 @@ export function BuildsPanel({
                         <div>
                           SHA-256 <code>{row.sha256}</code>
                         </div>
+                        <div>
+                          {row.downloads === 0
+                            ? 'Not downloaded yet'
+                            : `Downloaded ${row.downloads}× · last ${dateTime(row.lastDownloadedAt!)}`}
+                        </div>
                       </>
                     ) : (
                       (row.error ?? '')
                     )}
                   </td>
                   <td style={cell}>
-                    {!blocker && (row.status === 'succeeded' || row.status === 'failed') ? (
-                      <Button buttonStyle="secondary" onClick={() => rebuild(row)} size="small">
-                        Rebuild
-                      </Button>
-                    ) : null}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {row.status === 'succeeded' && downloadsReady ? (
+                        <Button
+                          disabled={downloading !== null}
+                          onClick={() => download(row)}
+                          size="small"
+                        >
+                          {downloading === row.id ? 'Preparing…' : 'Download'}
+                        </Button>
+                      ) : null}
+                      {!blocker && (row.status === 'succeeded' || row.status === 'failed') ? (
+                        <Button buttonStyle="secondary" onClick={() => rebuild(row)} size="small">
+                          Rebuild
+                        </Button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}

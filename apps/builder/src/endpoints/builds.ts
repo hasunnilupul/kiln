@@ -13,6 +13,14 @@ import {
   type GitHubSettings,
 } from '../lib/github'
 import { licenceKeys } from '../lib/licence-key'
+import {
+  DOWNLOAD_URL_TTL_SECONDS,
+  R2_VARIABLES,
+  objectSize,
+  r2Settings,
+  signedDownloadUrl,
+  type R2Settings,
+} from '../lib/r2'
 import { signToken, verifyToken } from '../lib/secrets'
 import type { Build } from '../payload-types'
 import { ApiError, inTransaction, jsonEndpoint, requireOwner, routeId } from './http'
@@ -26,15 +34,20 @@ const BUILD_TOKEN_PURPOSE = 'build-job'
 export function buildSetup(env: NodeJS.ProcessEnv = process.env): {
   github: GitHubSettings
   publicUrl: string
+  r2: R2Settings
 } {
-  const missing = ['GITHUB_TOKEN', 'GITHUB_REPOSITORY', 'BUILDER_PUBLIC_URL'].filter(
-    (name) => !env[name]?.trim(),
-  )
+  const missing = [
+    'GITHUB_TOKEN',
+    'GITHUB_REPOSITORY',
+    'BUILDER_PUBLIC_URL',
+    ...R2_VARIABLES,
+  ].filter((name) => !env[name]?.trim())
   if (missing.length > 0) throw new BuildsNotConfigured(missing)
   return {
     github: githubSettings(env),
     // The URL client builds check their licence in with, and the workflow calls back.
     publicUrl: env.BUILDER_PUBLIC_URL!.trim().replace(/\/+$/, ''),
+    r2: r2Settings(env),
   }
 }
 
@@ -354,6 +367,23 @@ export const buildCallback = jsonEndpoint({
             'The result does not match the requested build',
           )
         }
+        // Only a zip that actually reached the bucket can be downloaded later (BR-23).
+        const stored = await objectSize(setup.r2, body.zipKey).catch((error: unknown) => {
+          throw new ApiError(
+            502,
+            'storage_unavailable',
+            `Could not check the upload: ${(error as Error).message}`,
+          )
+        })
+        if (stored !== body.size) {
+          throw new ApiError(
+            400,
+            'upload_missing',
+            stored === null
+              ? 'The zip is not in the build bucket'
+              : `The stored zip is ${stored} bytes, not ${body.size}`,
+          )
+        }
         data = {
           status: 'succeeded',
           runUrl: body.runUrl ?? build.runUrl,
@@ -390,5 +420,48 @@ export const buildCallback = jsonEndpoint({
       }
       return { id, status: body.status }
     })
+  },
+})
+
+/**
+ * `POST /api/builds/:id/download`: a signed R2 link to a succeeded build's zip, valid for 15
+ * minutes (BR-23). Every link handed out is written to the audit log with the owner and IP.
+ */
+export const downloadBuild = jsonEndpoint({
+  method: 'post',
+  path: '/:id/download',
+  handler: async (req) => {
+    requireOwner(req)
+    const id = routeId(req)
+    const missing = R2_VARIABLES.filter((name) => !process.env[name]?.trim())
+    if (missing.length > 0) {
+      throw new ApiError(
+        503,
+        'storage_not_configured',
+        `Build downloads are not configured: set ${missing.join(', ')}`,
+      )
+    }
+    const build = await findBuild(req, id)
+    if (build.status !== 'succeeded' || !build.zipKey || !build.zipName) {
+      throw new ApiError(409, 'not_downloadable', 'Only succeeded builds can be downloaded')
+    }
+
+    const url = await signedDownloadUrl(r2Settings(), build.zipKey, build.zipName)
+    const expiresAt = new Date(Date.now() + DOWNLOAD_URL_TTL_SECONDS * 1000).toISOString()
+    await writeAudit(req, {
+      action: 'download_build',
+      entity: 'builds',
+      entityId: id,
+      data: {
+        clientId: relId(build.client),
+        zipName: build.zipName,
+        sha256: build.sha256,
+        expiresAt,
+      },
+    })
+    return Response.json(
+      { url, expiresAt, zipName: build.zipName, sha256: build.sha256 },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   },
 })

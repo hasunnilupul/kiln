@@ -1,6 +1,12 @@
 import { newClientConfig } from '@kiln/client-config'
 import config from '@/payload.config'
-import { buildCallback, buildJob, expireStaleBuilds, triggerBuild } from '@/endpoints/builds'
+import {
+  buildCallback,
+  buildJob,
+  downloadBuild,
+  expireStaleBuilds,
+  triggerBuild,
+} from '@/endpoints/builds'
 import { saveConfig } from '@/endpoints/configs'
 import { issueLicence } from '@/endpoints/licences'
 import { OWNER_SEED_CONTEXT } from '@/hooks/totp-login'
@@ -32,11 +38,26 @@ const github = {
   failDispatch: false,
 }
 
+/** The R2 bucket as seen by the builder: object sizes by key. */
+const bucket = new Map<string, number>()
+const R2_HOST = 'r2acct.r2.cloudflarestorage.com'
+
 beforeEach(() => {
   github.dispatches = []
   github.failDispatch = false
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const url = String(input)
+    if (new URL(url).hostname.endsWith(R2_HOST) && init?.method === 'HEAD') {
+      expect(url).toContain('X-Amz-Signature=')
+      const path = decodeURIComponent(new URL(url).pathname)
+      const key = [...bucket.keys()].find((candidate) => path.endsWith(`/${candidate}`))
+      return key === undefined
+        ? new Response(null, { status: 404 })
+        : new Response(null, {
+            status: 200,
+            headers: { 'content-length': String(bucket.get(key)) },
+          })
+    }
     if (url === `https://api.github.com/repos/${REPO}/tags?per_page=100`) {
       return Response.json(github.tags.map((name) => ({ name })))
     }
@@ -117,6 +138,10 @@ beforeAll(async () => {
     GITHUB_TOKEN: 'test-token',
     GITHUB_REPOSITORY: REPO,
     BUILDER_PUBLIC_URL: 'https://builder.example/',
+    R2_ACCOUNT_ID: 'r2acct',
+    R2_ACCESS_KEY_ID: 'test-access-key',
+    R2_SECRET_ACCESS_KEY: 'test-secret-key',
+    R2_BUCKET: 'kiln-builds',
   })
   payload = await getPayload({ config: await config })
   owner = await payload.create({
@@ -313,6 +338,20 @@ describe('the workflow (BR-21, BR-22)', () => {
     }
   })
 
+  it('accepts success only once the zip is in the bucket at its reported size', async () => {
+    const result = succeeded(build.id)
+    expect(await asWorkflow(buildCallback, build.id, build.token, result)).toMatchObject({
+      status: 400,
+      body: { error: { code: 'upload_missing', message: 'The zip is not in the build bucket' } },
+    })
+    bucket.set(result.zipKey as string, 1234)
+    expect(await asWorkflow(buildCallback, build.id, build.token, result)).toMatchObject({
+      status: 400,
+      body: { error: { code: 'upload_missing', message: expect.stringContaining('1234 bytes') } },
+    })
+    bucket.set(result.zipKey as string, result.size as number)
+  })
+
   it('records the zip, size and checksum, then is final', async () => {
     expect(
       await asWorkflow(buildCallback, build.id, build.token, succeeded(build.id)),
@@ -338,6 +377,109 @@ describe('the workflow (BR-21, BR-22)', () => {
       await asWorkflow(buildCallback, build.id, build.token, { status: 'failed', error: 'late' }),
     ).toMatchObject({ status: 409 })
     expect(await asWorkflow(buildJob, build.id, build.token)).toMatchObject({ status: 409 })
+  })
+})
+
+describe('downloads (BR-23)', () => {
+  let done: number
+  let queued: number
+
+  beforeAll(async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      if (url.endsWith('/tags?per_page=100'))
+        return Response.json(github.tags.map((name) => ({ name })))
+      if (new URL(url).hostname.endsWith(R2_HOST)) {
+        return new Response(null, { status: 200, headers: { 'content-length': '52428800' } })
+      }
+      github.dispatches.push(JSON.parse(String(init?.body)))
+      return new Response(null, { status: 204 })
+    })
+    const build = await startBuild()
+    const stored = await payload.findByID({
+      collection: 'builds',
+      id: build.id,
+      overrideAccess: true,
+    })
+    licenceIds.set(build.id, stored.licenceId)
+    await asWorkflow(buildCallback, build.id, build.token, { status: 'building', runUrl: RUN_URL })
+    const result = await asWorkflow(buildCallback, build.id, build.token, succeeded(build.id))
+    expect(result).toMatchObject({ status: 200 })
+    done = build.id
+    queued = (await startBuild()).id
+    vi.restoreAllMocks()
+  })
+
+  const download = (id: number, user: User | null = owner) =>
+    callEndpoint(payload, downloadBuild, { user: user ?? undefined, params: { id } })
+
+  it('is for the signed-in owner only', async () => {
+    expect(await download(done, null)).toMatchObject({ status: 401 })
+  })
+
+  it('only offers succeeded builds', async () => {
+    expect(await download(queued)).toMatchObject({
+      status: 409,
+      body: { error: { code: 'not_downloadable' } },
+    })
+    expect(await download(999_999_999)).toMatchObject({ status: 404 })
+  })
+
+  it('returns a 15-minute signed link that saves the zip under its name', async () => {
+    const before = Date.now()
+    const result = await download(done)
+    expect(result).toMatchObject({
+      status: 200,
+      body: { zipName: `${client.slug}-pos-v1.1.0-c1.zip`, sha256: SHA },
+    })
+    expect(result.headers.get('cache-control')).toBe('no-store')
+    const url = new URL(result.body.url)
+    expect(url.hostname).toContain(R2_HOST)
+    expect(decodeURIComponent(url.pathname)).toContain(
+      `builds/${client.slug}/${client.slug}-pos-v1.1.0-c1.zip`,
+    )
+    expect(url.searchParams.get('X-Amz-Expires')).toBe('900')
+    expect(url.searchParams.get('X-Amz-Signature')).toMatch(/^[0-9a-f]{64}$/)
+    expect(url.searchParams.get('response-content-disposition')).toBe(
+      `attachment; filename="${client.slug}-pos-v1.1.0-c1.zip"`,
+    )
+    expect(url.searchParams.get('X-Amz-Credential')).not.toContain('test-secret-key')
+    const expiresAt = Date.parse(result.body.expiresAt)
+    expect(expiresAt - before).toBeGreaterThanOrEqual(15 * 60 * 1000)
+    expect(expiresAt - before).toBeLessThan(16 * 60 * 1000)
+  })
+
+  it('logs every download with the owner', async () => {
+    await download(done)
+    const { docs } = await payload.find({
+      collection: 'audit-log',
+      where: {
+        and: [{ action: { equals: 'download_build' } }, { entityId: { equals: String(done) } }],
+      },
+      depth: 0,
+      overrideAccess: true,
+    })
+    expect(docs.length).toBeGreaterThanOrEqual(2)
+    expect(docs[0]).toMatchObject({
+      entity: 'builds',
+      actor: owner.id,
+      data: { clientId: client.id, sha256: SHA },
+    })
+  })
+
+  it('explains what is missing when storage is not configured', async () => {
+    const bucketName = process.env.R2_BUCKET
+    delete process.env.R2_BUCKET
+    try {
+      expect(await download(done)).toMatchObject({
+        status: 503,
+        body: {
+          error: { code: 'storage_not_configured', message: expect.stringContaining('R2_BUCKET') },
+        },
+      })
+    } finally {
+      process.env.R2_BUCKET = bucketName
+    }
   })
 })
 
