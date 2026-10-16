@@ -38,8 +38,8 @@ export function buildSetup(env: NodeJS.ProcessEnv = process.env): {
   r2: R2Settings
 } {
   const missing = [
-    'GITHUB_TOKEN',
-    'GITHUB_REPOSITORY',
+    'BUILDER_GITHUB_TOKEN',
+    'BUILDER_GITHUB_REPOSITORY',
     'BUILDER_PUBLIC_URL',
     ...R2_VARIABLES,
   ].filter((name) => !env[name]?.trim())

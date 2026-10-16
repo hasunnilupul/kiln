@@ -22,19 +22,25 @@ export class BuildsNotConfigured extends Error {
   }
 }
 
-/** Settings from `GITHUB_TOKEN`, `GITHUB_REPOSITORY` and the optional workflow overrides. */
+/**
+ * Settings from `BUILDER_GITHUB_TOKEN`, `BUILDER_GITHUB_REPOSITORY` and the optional workflow
+ * overrides. Prefixed because GitHub Actions sets its own `GITHUB_REPOSITORY` and
+ * `GITHUB_WORKFLOW_REF` on every runner.
+ */
 export function githubSettings(env: NodeJS.ProcessEnv = process.env): GitHubSettings {
-  const missing = ['GITHUB_TOKEN', 'GITHUB_REPOSITORY'].filter((name) => !env[name]?.trim())
+  const missing = ['BUILDER_GITHUB_TOKEN', 'BUILDER_GITHUB_REPOSITORY'].filter(
+    (name) => !env[name]?.trim(),
+  )
   if (missing.length > 0) throw new BuildsNotConfigured(missing)
-  const repository = env.GITHUB_REPOSITORY!.trim()
+  const repository = env.BUILDER_GITHUB_REPOSITORY!.trim()
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository)) {
-    throw new Error(`GITHUB_REPOSITORY must be owner/name, got "${repository}"`)
+    throw new Error(`BUILDER_GITHUB_REPOSITORY must be owner/name, got "${repository}"`)
   }
   return {
-    token: env.GITHUB_TOKEN!.trim(),
+    token: env.BUILDER_GITHUB_TOKEN!.trim(),
     repository,
-    workflow: env.GITHUB_WORKFLOW_FILE?.trim() || 'build-client.yml',
-    ref: env.GITHUB_WORKFLOW_REF?.trim() || 'main',
+    workflow: env.BUILDER_WORKFLOW_FILE?.trim() || 'build-client.yml',
+    ref: env.BUILDER_WORKFLOW_REF?.trim() || 'main',
   }
 }
 
