@@ -40,12 +40,13 @@ jobs:
       BUILD_ID: ${{ inputs.build_id }}
       BUILD_TOKEN: ${{ inputs.token }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      JOB_DIR: ${{ runner.temp }}/kiln-job
     steps:
+      # The runner context is not available in job-level env, so JOB_DIR is set here.
       - name: Hide the build token in logs
         run: |
           [[ "$BUILD_ID" =~ ^[0-9]+$ ]] || { echo "::error::build_id must be a number"; exit 1; }
           echo "::add-mask::$BUILD_TOKEN"
+          echo "JOB_DIR=$RUNNER_TEMP/kiln-job" >> "$GITHUB_ENV"
 
       # Full history and tags: build-client.ts checks the template tag out into a worktree.
       - uses: actions/checkout@v7
