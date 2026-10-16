@@ -10,6 +10,7 @@ import {
 import { saveConfig } from '@/endpoints/configs'
 import { issueLicence } from '@/endpoints/licences'
 import { OWNER_SEED_CONTEXT } from '@/hooks/totp-login'
+import { describeLogo } from '@/lib/logo'
 import type { Client, User } from '@/payload-types'
 import { createLocalReq, getPayload, type Payload } from 'payload'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -186,6 +187,11 @@ afterAll(async () => {
   })
   await payload.delete({
     collection: 'client-configs',
+    where: { client: { in: ids } },
+    overrideAccess: true,
+  })
+  await payload.delete({
+    collection: 'logos',
     where: { client: { in: ids } },
     overrideAccess: true,
   })
@@ -524,6 +530,43 @@ describe('failures, rebuilds and stale builds', () => {
     expect(await trigger(other, { rebuildOf: id })).toMatchObject({
       status: 400,
       body: { error: { code: 'invalid_rebuild' } },
+    })
+  })
+
+  it("ships the config's logo with the job (BR-11)", async () => {
+    const png = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.from(run)])
+    const logo = describeLogo(png)
+    await payload.create({
+      collection: 'logos',
+      data: {
+        client: client.id,
+        path: logo.path,
+        mimeType: logo.mimeType,
+        size: logo.size,
+        sha256: logo.sha256,
+        data: png.toString('base64'),
+      },
+      overrideAccess: true,
+    })
+    const draft = newClientConfig({ id: 'x', slug: 'x', displayName: 'Build Shop' })
+    draft.admin = { email: 'admin@test.example', name: 'Admin' }
+    draft.branding.logo = logo.path
+    expect(
+      await callEndpoint(payload, saveConfig, {
+        user: owner,
+        params: { id: client.id },
+        body: { config: draft },
+      }),
+    ).toMatchObject({ status: 201, body: { version: 2 } })
+
+    const { id, token } = await startBuild({ configVersion: 2 })
+    const job = await asWorkflow(buildJob, id, token)
+    expect(job).toMatchObject({
+      status: 200,
+      body: {
+        config: { branding: { logo: logo.path } },
+        assets: [{ path: logo.path, sha256: logo.sha256, base64: png.toString('base64') }],
+      },
     })
   })
 

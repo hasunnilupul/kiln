@@ -39,6 +39,7 @@ export async function ClientSetupView({ doc, initPageResult }: DocumentViewServe
         endpoint={`${req.payload.config.routes.api}/clients/${client.id}/configs`}
         initialDraft={initialDraft}
         latest={latest ? { version: latest.version, config: latest.config } : null}
+        logoEndpoint={`${req.payload.config.routes.api}/clients/${client.id}/logo`}
       />
     </div>
   )

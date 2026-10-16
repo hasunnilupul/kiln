@@ -96,6 +96,102 @@ export function TextField({
   )
 }
 
+/**
+ * The branding logo (BR-11): uploads the file straight away and puts its stored path in the draft;
+ * like every other edit, it reaches the client with the next saved config version.
+ */
+export function LogoField({ endpoint, path }: { endpoint: string; path: DraftPath }) {
+  const { draft, update, disabled } = useDraft()
+  const id = useId()
+  const value = getAt(draft, path)
+  const current = typeof value === 'string' ? value : null
+  const [uploading, setUploading] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+
+  async function upload(file: File) {
+    setUploading(true)
+    setError(null)
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+          'X-File-Name': file.name.replace(/[^\w .()-]/g, ''),
+        },
+        body: file,
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || typeof body.path !== 'string') {
+        setError(body.error?.message ?? 'Could not upload the logo')
+        return
+      }
+      update(path, body.path)
+    } catch {
+      setError('Could not reach the builder')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="field-type upload" style={fieldStyle}>
+      <label className="field-label" htmlFor={id}>
+        Logo (optional)
+      </label>
+      {current ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--base)', marginBottom: 8 }}>
+          {/* An <img> never runs script, even for an SVG; the endpoint also forbids it. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            alt="Current logo"
+            src={`${endpoint}?path=${encodeURIComponent(current)}`}
+            style={{
+              maxHeight: 80,
+              maxWidth: 240,
+              objectFit: 'contain',
+              background: 'var(--theme-elevation-50)',
+              padding: 8,
+            }}
+          />
+          <code style={{ fontSize: 12 }}>{current}</code>
+          <Button
+            buttonStyle="secondary"
+            disabled={disabled || uploading}
+            onClick={() => update(path, undefined)}
+            size="small"
+          >
+            Remove logo
+          </Button>
+        </div>
+      ) : null}
+      <input
+        accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml"
+        disabled={disabled || uploading}
+        id={id}
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          event.target.value = ''
+          if (file) void upload(file)
+        }}
+        style={{ minHeight: 44 }}
+        type="file"
+      />
+      <div className="field-description">
+        {uploading
+          ? 'Uploading…'
+          : 'PNG, JPEG, WebP or SVG, up to 512 KB. Shown on the till, receipts and as the app icon.'}
+      </div>
+      {error ? (
+        <div role="alert" style={errorStyle}>
+          {error}
+        </div>
+      ) : null}
+      <Issues path={path} />
+    </div>
+  )
+}
+
 /** A number field; an empty box leaves the value unset so validation reports it. */
 export function NumberField({ path, label, description }: InputProps) {
   const { draft, update, disabled } = useDraft()

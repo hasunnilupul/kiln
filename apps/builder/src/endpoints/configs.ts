@@ -6,6 +6,7 @@ import { writeAudit } from '../hooks/audit'
 import { execute, sql } from '../lib/db'
 import type { Client, ClientConfig as ConfigVersion } from '../payload-types'
 import { ApiError, jsonEndpoint, requireOwner, routeId, type OwnerUser } from './http'
+import { findLogo } from './logos'
 
 const saveBody = z.object({
   config: z.unknown(),
@@ -72,6 +73,16 @@ export async function saveConfigVersion(
             path: issue.path,
             message: issue.message,
           })),
+        },
+      })
+    }
+
+    // A logo must have been uploaded for this client, so every saved version can be built.
+    const logo = parsed.config.branding.logo
+    if (logo && !(await findLogo(req, clientId, logo))) {
+      throw new ApiError(422, 'invalid_config', 'The config is invalid', {
+        details: {
+          issues: [{ path: ['branding', 'logo'], message: 'Upload the logo in the Branding step' }],
         },
       })
     }

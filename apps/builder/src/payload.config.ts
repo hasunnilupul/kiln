@@ -10,6 +10,7 @@ import { ClientConfigs } from './collections/ClientConfigs'
 import { Clients } from './collections/Clients'
 import { Licences } from './collections/Licences'
 import { LoginAttempts } from './collections/LoginAttempts'
+import { Logos } from './collections/Logos'
 import { Users } from './collections/Users'
 import { licenceCheck } from './endpoints/licences'
 import { authEndpoints } from './endpoints/sign-in'
@@ -46,7 +47,7 @@ export default buildConfig({
     if (isProductionRuntime()) licenceKeys()
     await seedOwner(payload)
   },
-  collections: [Clients, ClientConfigs, Licences, Builds, Users, AuditLog, LoginAttempts],
+  collections: [Clients, ClientConfigs, Logos, Licences, Builds, Users, AuditLog, LoginAttempts],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

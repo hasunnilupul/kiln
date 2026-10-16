@@ -6,6 +6,7 @@ import { isOwner, nobody } from '../access/owner'
 import { triggerBuild } from '../endpoints/builds'
 import { saveConfig } from '../endpoints/configs'
 import { issueLicence } from '../endpoints/licences'
+import { serveLogo, uploadLogo } from '../endpoints/logos'
 import { auditCollectionChange } from '../hooks/audit'
 
 /** A stable id for configs and licences, e.g. `cl_7k2m9q4x8w1p`; never reused or changed. */
@@ -51,7 +52,7 @@ export const Clients: CollectionConfig = {
     },
   },
   defaultSort: 'name',
-  endpoints: [saveConfig, issueLicence, triggerBuild],
+  endpoints: [saveConfig, issueLicence, triggerBuild, uploadLogo, serveLogo],
   access: {
     read: isOwner,
     create: isOwner,

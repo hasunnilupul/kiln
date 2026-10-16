@@ -25,6 +25,7 @@ import { signToken, verifyToken } from '../lib/secrets'
 import type { Build } from '../payload-types'
 import { ApiError, inTransaction, jsonEndpoint, requireOwner, routeId } from './http'
 import { currentLicence } from './licences'
+import { findLogo } from './logos'
 
 /** How long the workflow may take, from dispatch to its last callback. */
 export const BUILD_TOKEN_TTL_SECONDS = 3 * 60 * 60
@@ -274,12 +275,21 @@ export const buildJob = jsonEndpoint({
     ])
     const licence = licences.docs[0]
     if (!licence) throw new ApiError(409, 'licence_missing', `Licence ${build.licenceId} not found`)
+    // Branding assets the config points at, written next to client.config.json by the workflow.
+    const assets: { path: string; sha256: string; base64: string }[] = []
+    const logoPath = (config.config as { branding?: { logo?: string } }).branding?.logo
+    if (logoPath) {
+      const logo = await findLogo(req, client.id, logoPath)
+      if (!logo) throw new ApiError(409, 'logo_missing', `Logo ${logoPath} not found`)
+      assets.push({ path: logo.path, sha256: logo.sha256, base64: logo.data })
+    }
     return {
       buildId: build.id,
       clientSlug: client.slug,
       templateVersion: build.templateVersion,
       configVersion: build.configNumber,
       config: config.config,
+      assets,
       licence: licenceFileSchema.parse(licence.file),
       publicKey: licenceKeys().publicKeyPem,
       licenceServer: setup.publicUrl,

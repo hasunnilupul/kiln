@@ -9,6 +9,7 @@
  *
  * Environment: BUILDER_URL, BUILD_ID, BUILD_TOKEN, RUN_URL, GITHUB_OUTPUT; JOB_DIR (default "job").
  */
+import { createHash } from 'node:crypto'
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
@@ -28,6 +29,8 @@ interface Job {
   templateVersion: string
   configVersion: number
   config: unknown
+  /** Branding assets, at the relative paths the config uses (e.g. `assets/logo-….png`). */
+  assets: { path: string; sha256: string; base64: string }[]
   licence: unknown
   publicKey: string
   licenceServer: string
@@ -82,6 +85,18 @@ if (command === 'start') {
   mkdirSync(jobDir, { recursive: true })
   writeFileSync(jobFile, JSON.stringify(job))
   writeFileSync(path.join(jobDir, 'client.config.json'), `${JSON.stringify(job.config, null, 2)}\n`)
+  for (const asset of job.assets ?? []) {
+    const target = path.resolve(jobDir, asset.path)
+    if (!/^assets\/[\w.-]+$/.test(asset.path) || !target.startsWith(`${jobDir}${path.sep}`)) {
+      throw new Error(`Refusing asset path ${asset.path}`)
+    }
+    const bytes = Buffer.from(asset.base64, 'base64')
+    if (createHash('sha256').update(bytes).digest('hex') !== asset.sha256) {
+      throw new Error(`Asset ${asset.path} does not match its checksum`)
+    }
+    mkdirSync(path.dirname(target), { recursive: true })
+    writeFileSync(target, bytes)
+  }
   writeFileSync(path.join(jobDir, 'licence.json'), `${JSON.stringify(job.licence, null, 2)}\n`)
   writeFileSync(path.join(jobDir, 'public.pem'), job.publicKey)
   output({

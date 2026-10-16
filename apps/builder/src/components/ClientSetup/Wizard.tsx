@@ -20,6 +20,7 @@ import {
   ColorField,
   DraftContext,
   ListField,
+  LogoField,
   NumberField,
   Row,
   SectionIssues,
@@ -33,6 +34,8 @@ export interface WizardProps {
   endpoint: string
   initialDraft: unknown
   latest: { version: number; config: unknown } | null
+  /** `/api/clients/:id/logo`: upload, and preview by `?path=`. */
+  logoEndpoint: string
 }
 
 interface StoredDraft {
@@ -88,7 +91,14 @@ const MODULE_DESCRIPTIONS = {
  * validation issues, and Review saves the whole config as a new version (BR-12), which the
  * server validates again.
  */
-export function Wizard({ archived, clientRecordId, endpoint, initialDraft, latest }: WizardProps) {
+export function Wizard({
+  archived,
+  clientRecordId,
+  endpoint,
+  initialDraft,
+  latest,
+  logoEndpoint,
+}: WizardProps) {
   const router = useRouter()
   const baseVersion = latest?.version ?? null
   // Unsaved work is restored only if it was based on the version shown now.
@@ -233,6 +243,7 @@ export function Wizard({ archived, clientRecordId, endpoint, initialDraft, lates
         changes={changes}
         issueSteps={validation.issues}
         latestVersion={latest?.version ?? null}
+        logoEndpoint={logoEndpoint}
         note={note}
         onGoTo={setStep}
         setNote={setNote}
@@ -276,6 +287,7 @@ function StepBody({
   changes,
   issueSteps,
   latestVersion,
+  logoEndpoint,
   note,
   onGoTo,
   serverIssues,
@@ -285,6 +297,7 @@ function StepBody({
   changes: ReturnType<typeof diffClientConfigs>
   issueSteps: { step: WizardStepId; path: (string | number)[]; message: string }[]
   latestVersion: number | null
+  logoEndpoint: string
   note: string
   onGoTo: (step: WizardStepId) => void
   serverIssues: { path: (string | number)[]; message: string }[]
@@ -364,7 +377,7 @@ function StepBody({
           </Row>
           <TextField label="Receipt header" optional path={['branding', 'receiptHeader']} />
           <TextField label="Receipt footer" optional path={['branding', 'receiptFooter']} />
-          <p className="field-description">Logo upload arrives with build storage.</p>
+          <LogoField endpoint={logoEndpoint} path={['branding', 'logo']} />
         </>
       )
     case 'tax':

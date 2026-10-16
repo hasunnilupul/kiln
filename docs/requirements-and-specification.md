@@ -264,6 +264,7 @@ The builder is a private Payload app used only by the platform owner. It stores 
 | `users` | Owner account(s) with TOTP secret |
 | `clients` | Client records |
 | `client-configs` | Versioned configs: client, version, config JSON, createdBy |
+| `logos` | Branding logos uploaded in the wizard: client, content-addressed path, type, size, checksum, file; append-only, kept in the database so every config version stays buildable |
 | `builds` | Build jobs: client, configVersion, templateVersion, status, zipKey, checksum, logsUrl |
 | `licences` | Issued licences: client, payload, signature, expiresAt, revokedAt |
 | `audit-log` | Every action with actor and timestamp |
@@ -274,7 +275,7 @@ One script, `scripts/build-client.ts`, turns a config into a zip; it runs identi
 
 **Pipeline steps**
 
-1. Workflow receives `buildId` and a signed token from the builder; fetches the config version and licence from the builder API.
+1. Workflow receives `buildId` and a signed token from the builder; fetches the config version, its logo and the licence from the builder API.
 2. Checks out the POS template at the requested git tag and installs dependencies with a frozen lockfile.
 3. Validates the config with the shared schema; fails the build on any error.
 4. Writes `client.config.json` and copies branding assets (logo, icons, PWA manifest) into the POS app.
@@ -488,7 +489,7 @@ Exit: one command turns an example config into a zip that runs on both platforms
 - [x] Licence issuing, renewal, revocation, with daily POS check-in
 - [x] `build-client.yml` workflow triggered via the GitHub API with signed callbacks
 - [x] R2 upload, build history, 15-minute signed download links
-- [ ] Branding logo upload in the setup wizard (needs the builder's file storage)
+- [x] Branding logo upload in the setup wizard
 
 Exit: from the browser, create a client, run the wizard, click Build and download a working zip.
 

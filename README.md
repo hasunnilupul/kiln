@@ -73,9 +73,11 @@ It checks out the commit (`--ref`, default `HEAD`) into a temporary worktree, so
 
 ### Builds from the builder
 
-The client's **Builds** tab picks a config version and a template version (a git tag) and dispatches `.github/workflows/build-client.yml` through the GitHub API with the build id and a 3-hour build token. The workflow fetches the job (config, licence, public key) from `/api/builds/:id/job`, reports `building`, runs `build-client.ts` at the tag, uploads the zip and its `.sha256` to R2 under `builds/<client-slug>/`, and reports `succeeded` (size, checksum, commit) or `failed` to `/api/builds/:id/callback`. The builder accepts a success only once the zip is in the bucket at the reported size. Builds that never report back are marked failed when their token expires. `scripts/remote-build.ts` is the workflow's side of these calls.
+The client's **Builds** tab picks a config version and a template version (a git tag) and dispatches `.github/workflows/build-client.yml` through the GitHub API with the build id and a 3-hour build token. The workflow fetches the job (config, its logo, licence, public key) from `/api/builds/:id/job`, reports `building`, runs `build-client.ts` at the tag, uploads the zip and its `.sha256` to R2 under `builds/<client-slug>/`, and reports `succeeded` (size, checksum, commit) or `failed` to `/api/builds/:id/callback`. The builder accepts a success only once the zip is in the bucket at the reported size. Builds that never report back are marked failed when their token expires. `scripts/remote-build.ts` is the workflow's side of these calls.
 
 **Download** on a succeeded build asks `/api/builds/:id/download` for a signed R2 link that works for 15 minutes and saves the zip under its name; the bucket stays private. Every link handed out is written to the audit log, and the build history shows how often and when each zip was last downloaded. Check the zip against the SHA-256 shown next to it before deploying.
+
+The setup wizard's Branding step uploads the logo (PNG, JPEG, WebP or SVG, up to 512 KB) to the builder's database under a content-addressed path such as `assets/logo-3f2a9c1b7d4e.png`, which the config's `branding.logo` points at. The type is checked from the file's bytes, and SVGs with scripts, event handlers or external references are refused, since the POS serves the logo from its own origin. A new logo becomes part of the next saved config version, and older versions keep building with their own logo.
 
 One-time setup:
 

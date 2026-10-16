@@ -69,6 +69,7 @@ export interface Config {
   collections: {
     clients: Client;
     'client-configs': ClientConfig;
+    logos: Logo;
     licences: Licence;
     builds: Build;
     users: User;
@@ -83,6 +84,7 @@ export interface Config {
   collectionsSelect: {
     clients: ClientsSelect<false> | ClientsSelect<true>;
     'client-configs': ClientConfigsSelect<false> | ClientConfigsSelect<true>;
+    logos: LogosSelect<false> | LogosSelect<true>;
     licences: LicencesSelect<false> | LicencesSelect<true>;
     builds: BuildsSelect<false> | BuildsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
@@ -211,6 +213,26 @@ export interface User {
     | null;
   password?: string | null;
   collection: 'users';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "logos".
+ */
+export interface Logo {
+  id: number;
+  client: number | Client;
+  path: string;
+  /**
+   * Name of the uploaded file.
+   */
+  filename?: string | null;
+  mimeType: string;
+  size: number;
+  sha256: string;
+  data: string;
+  uploadedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -345,6 +367,10 @@ export interface PayloadLockedDocument {
         value: number | ClientConfig;
       } | null)
     | ({
+        relationTo: 'logos';
+        value: number | Logo;
+      } | null)
+    | ({
         relationTo: 'licences';
         value: number | Licence;
       } | null)
@@ -433,6 +459,22 @@ export interface ClientConfigsSelect<T extends boolean = true> {
   config?: T;
   note?: T;
   createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "logos_select".
+ */
+export interface LogosSelect<T extends boolean = true> {
+  client?: T;
+  path?: T;
+  filename?: T;
+  mimeType?: T;
+  size?: T;
+  sha256?: T;
+  data?: T;
+  uploadedBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }
