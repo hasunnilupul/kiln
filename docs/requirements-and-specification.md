@@ -480,10 +480,11 @@ Exit: one command turns an example config into a zip that runs on both platforms
 **M5 — Builder app and remote builds** — in progress
 
 - [x] `apps/builder` with owner login, TOTP 2FA, rate limiting, audit log
-- [ ] Clients, setup wizard, versioned configs with diff
+- [x] Clients, setup wizard, versioned configs with diff
 - [ ] Licence issuing, renewal, revocation
 - [ ] `build-client.yml` workflow triggered via the GitHub API with signed callbacks
 - [ ] R2 upload, build history, 15-minute signed download links
+- [ ] Branding logo upload in the setup wizard (needs the builder's file storage)
 
 Exit: from the browser, create a client, run the wizard, click Build and download a working zip.
 

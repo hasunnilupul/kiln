@@ -67,6 +67,8 @@ export interface Config {
   };
   blocks: {};
   collections: {
+    clients: Client;
+    'client-configs': ClientConfig;
     users: User;
     'audit-log': AuditLog;
     'login-attempts': LoginAttempt;
@@ -77,6 +79,8 @@ export interface Config {
   };
   collectionsJoins: {};
   collectionsSelect: {
+    clients: ClientsSelect<false> | ClientsSelect<true>;
+    'client-configs': ClientConfigsSelect<false> | ClientConfigsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
     'login-attempts': LoginAttemptsSelect<false> | LoginAttemptsSelect<true>;
@@ -118,6 +122,58 @@ export interface UserAuthOperations {
     email: string;
     password: string;
   };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "clients".
+ */
+export interface Client {
+  id: number;
+  name: string;
+  /**
+   * Used in build file names, e.g. acme-mart-pos-v1.0.0-c3.zip.
+   */
+  slug: string;
+  /**
+   * Archived clients keep their history but get no new configs or builds.
+   */
+  status: 'active' | 'archived';
+  /**
+   * Stable id written into the config and licence.
+   */
+  clientId?: string | null;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "client-configs".
+ */
+export interface ClientConfig {
+  id: number;
+  client: number | Client;
+  version: number;
+  /**
+   * e.g. "acme-mart c3".
+   */
+  label?: string | null;
+  config:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  note?: string | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -214,6 +270,14 @@ export interface PayloadLockedDocument {
   id: number;
   document?:
     | ({
+        relationTo: 'clients';
+        value: number | Client;
+      } | null)
+    | ({
+        relationTo: 'client-configs';
+        value: number | ClientConfig;
+      } | null)
+    | ({
         relationTo: 'users';
         value: number | User;
       } | null)
@@ -266,6 +330,36 @@ export interface PayloadMigration {
   batch?: number | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "clients_select".
+ */
+export interface ClientsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  status?: T;
+  clientId?: T;
+  contactName?: T;
+  contactEmail?: T;
+  contactPhone?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "client-configs_select".
+ */
+export interface ClientConfigsSelect<T extends boolean = true> {
+  client?: T;
+  version?: T;
+  label?: T;
+  config?: T;
+  note?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

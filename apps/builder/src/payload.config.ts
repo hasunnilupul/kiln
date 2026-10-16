@@ -5,6 +5,8 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 
 import { AuditLog } from './collections/AuditLog'
+import { ClientConfigs } from './collections/ClientConfigs'
+import { Clients } from './collections/Clients'
 import { LoginAttempts } from './collections/LoginAttempts'
 import { Users } from './collections/Users'
 import { authEndpoints } from './endpoints/sign-in'
@@ -38,7 +40,7 @@ export default buildConfig({
     parseAllowlist(process.env.BUILDER_IP_ALLOWLIST)
     await seedOwner(payload)
   },
-  collections: [Users, AuditLog, LoginAttempts],
+  collections: [Clients, ClientConfigs, Users, AuditLog, LoginAttempts],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
