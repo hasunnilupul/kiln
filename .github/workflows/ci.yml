@@ -24,8 +24,12 @@ jobs:
           - 5432:5432
     env:
       DATABASE_URI: postgres://kiln:kiln@localhost:5432/kiln_pos
+      # The builder's tests get their own database (see apps/builder/vitest.setup.ts).
+      BUILDER_TEST_DATABASE_URI: postgres://kiln:kiln@localhost:5432/kiln_builder
       PAYLOAD_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
     steps:
+      - name: Create the builder's database
+        run: PGPASSWORD=kiln psql -h localhost -U kiln -d kiln_pos -c 'create database kiln_builder'
       - uses: actions/checkout@v7
       # Reads the pnpm version from packageManager in package.json.
       - uses: pnpm/action-setup@v6
@@ -45,6 +49,16 @@ jobs:
           if [ -n "$(git status --porcelain -- apps/pos/src/migrations)" ]; then
             echo "::error::Schema changed without a migration. Run: pnpm --filter pos payload migrate:create <name>"
             git status --porcelain -- apps/pos/src/migrations
+            exit 1
+          fi
+      - name: Check builder migrations match the Payload config
+        env:
+          DATABASE_URI: ${{ env.BUILDER_TEST_DATABASE_URI }}
+        run: |
+          pnpm --filter builder payload migrate:create schema-drift --skip-empty
+          if [ -n "$(git status --porcelain -- apps/builder/src/migrations)" ]; then
+            echo "::error::Schema changed without a migration. Run: pnpm --filter builder payload migrate:create <name>"
+            git status --porcelain -- apps/builder/src/migrations
             exit 1
           fi
 
