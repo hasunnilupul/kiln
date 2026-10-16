@@ -136,8 +136,8 @@ const licenceIdOf = (id: number) => licenceIds.get(id)!
 
 beforeAll(async () => {
   Object.assign(process.env, {
-    GITHUB_TOKEN: 'test-token',
-    GITHUB_REPOSITORY: REPO,
+    BUILDER_GITHUB_TOKEN: 'test-token',
+    BUILDER_GITHUB_REPOSITORY: REPO,
     BUILDER_PUBLIC_URL: 'https://builder.example/',
     R2_ACCOUNT_ID: 'r2acct',
     R2_ACCESS_KEY_ID: 'test-access-key',
@@ -206,20 +206,20 @@ afterAll(async () => {
 
 describe('triggering a build (BR-20)', () => {
   it('explains what is missing when builds are not configured', async () => {
-    const token = process.env.GITHUB_TOKEN
-    delete process.env.GITHUB_TOKEN
+    const token = process.env.BUILDER_GITHUB_TOKEN
+    delete process.env.BUILDER_GITHUB_TOKEN
     try {
       expect(await trigger(client)).toMatchObject({
         status: 503,
         body: {
           error: {
             code: 'builds_not_configured',
-            message: expect.stringContaining('GITHUB_TOKEN'),
+            message: expect.stringContaining('BUILDER_GITHUB_TOKEN'),
           },
         },
       })
     } finally {
-      process.env.GITHUB_TOKEN = token
+      process.env.BUILDER_GITHUB_TOKEN = token
     }
   })
 
