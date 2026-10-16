@@ -482,7 +482,7 @@ Exit: the end-to-end test opens a shift, sells, refunds and closes the shift wit
 
 Exit: one command turns an example config into a zip that runs on both platforms.
 
-**M5 — Builder app and remote builds** — in progress
+**M5 — Builder app and remote builds** — done
 
 - [x] `apps/builder` with owner login, TOTP 2FA, rate limiting, audit log
 - [x] Clients, setup wizard, versioned configs with diff
