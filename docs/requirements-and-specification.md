@@ -479,7 +479,7 @@ Exit: one command turns an example config into a zip that runs on both platforms
 
 **M5 — Builder app and remote builds** — in progress
 
-- [ ] `apps/builder` with owner login, TOTP 2FA, rate limiting, audit log
+- [x] `apps/builder` with owner login, TOTP 2FA, rate limiting, audit log
 - [ ] Clients, setup wizard, versioned configs with diff
 - [ ] Licence issuing, renewal, revocation
 - [ ] `build-client.yml` workflow triggered via the GitHub API with signed callbacks

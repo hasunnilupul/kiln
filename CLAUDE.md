@@ -111,6 +111,17 @@ Local development uses PostgreSQL via `docker compose up -d db` (development onl
 | `LICENCE_PUBLIC_KEY` | Development only (from `pnpm licence:dev`); production uses the key embedded in `src/lib/licence-public-key.ts` |
 | `PORT` | Defaults to 3000 |
 
+## Environment variables (builder)
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URI` | PostgreSQL connection string |
+| `PAYLOAD_SECRET` | At least 32 random bytes; also seals owners' TOTP secrets, so rotating it forces TOTP re-enrolment |
+| `BUILDER_OWNER_EMAIL`, `BUILDER_OWNER_PASSWORD` | First boot creates this owner when there is none (password ≥ 16 characters); TOTP is set up on first sign-in |
+| `BUILDER_IP_ALLOWLIST` | Optional addresses/CIDR ranges (BR-03); read from `x-real-ip`/`x-forwarded-for`, so only behind a proxy that sets them |
+
+Builder sign-in goes only through `POST /api/auth/sign-in` (password + TOTP); Payload's own login, forgot/reset-password, first-user creation and GraphQL are disabled.
+
 ## Current status
 
 Milestones M0 (foundation), M1 (`client-config`, `pricing`, `licence` packages) M2 (POS data model, storage, migrations, first-boot seeding, licence checks) M3 (shifts, checkout, payments, refunds, receipts, reports, cashier screen) and M4 (scripts/build-client.ts, client-build workflow) are done; next is M5. Roadmap: M0 foundation → M1 config, pricing and licence packages → M2 POS data model and first boot → M3 checkout, payments, shifts, refunds → M4 build script → M5 builder app and remote builds → M6 hardening and first client readiness.
