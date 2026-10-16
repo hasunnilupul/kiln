@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "client": {
+    "id": "cl_02",
+    "slug": "harbour-books",
+    "legalName": "Harbour Books and Stationery (Pvt) Ltd",
+    "displayName": "Harbour Books",
+    "address": "12 Harbour Road, Colombo 01",
+    "phone": "+94 11 234 5678",
+    "email": "hello@harbourbooks.example",
+    "taxRegistrationNo": "VAT-000000000-7000"
+  },
+  "locale": {
+    "currency": "LKR",
+    "locale": "en-LK",
+    "timezone": "Asia/Colombo",
+    "dateFormat": "dd/MM/yyyy"
+  },
+  "branding": {
+    "primaryColor": "#1E3A8A",
+    "accentColor": "#E11D48",
+    "logo": "assets/harbour-logo.svg",
+    "receiptHeader": "Harbour Books",
+    "receiptFooter": "Exchanges within 14 days with receipt."
+  },
+  "tax": {
+    "pricesIncludeTax": false,
+    "rates": [
+      { "code": "VAT", "name": "VAT", "ratePercent": 18 },
+      { "code": "ZERO", "name": "Zero rated", "ratePercent": 0 }
+    ],
+    "defaultRateCode": "VAT"
+  },
+  "paymentMethods": [
+    { "code": "cash", "label": "Cash", "type": "cash" },
+    { "code": "card", "label": "Card", "type": "card_external", "requiresReference": true },
+    { "code": "lankaqr", "label": "LankaQR", "type": "qr", "requiresReference": true },
+    { "code": "voucher", "label": "Voucher", "type": "other", "enabled": false }
+  ],
+  "outlets": [
+    {
+      "code": "FORT",
+      "name": "Fort",
+      "address": "12 Harbour Road, Colombo 01",
+      "registers": [
+        { "code": "FORT-1", "name": "Fort Till 1" },
+        { "code": "FORT-2", "name": "Fort Till 2" }
+      ]
+    },
+    {
+      "code": "KANDY",
+      "name": "Kandy",
+      "registers": [{ "code": "KANDY-1", "name": "Kandy Till 1" }]
+    }
+  ],
+  "modules": { "inventory": true, "customers": false, "discounts": true, "multiOutlet": true },
+  "receipt": { "paperWidthMm": 58, "showTaxBreakdown": true, "showCashierName": false },
+  "admin": { "email": "admin@harbourbooks.example", "name": "Harbour Admin" }
+}

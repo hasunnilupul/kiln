@@ -1,0 +1,36 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "ui": "stream",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"],
+      "passThroughEnv": ["DATABASE_URI", "PAYLOAD_SECRET"]
+    },
+    "dev": {
+      "persistent": true,
+      "cache": false,
+      "passThroughEnv": ["PORT"],
+      "dependsOn": ["^build"]
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "topo": {
+      "dependsOn": ["^topo"]
+    },
+    "check-types": {
+      "dependsOn": ["topo"]
+    },
+    "test": {
+      "cache": false,
+      "passThroughEnv": ["DATABASE_URI", "PAYLOAD_SECRET"],
+      "dependsOn": ["^build"]
+    },
+    "test:e2e": {
+      "cache": false,
+      "passThroughEnv": ["DATABASE_URI", "PAYLOAD_SECRET", "CI"],
+      "dependsOn": ["^build"]
+    }
+  }
+}

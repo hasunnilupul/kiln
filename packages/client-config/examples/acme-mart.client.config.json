@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "client": {
+    "id": "cl_01",
+    "slug": "acme-mart",
+    "legalName": "Acme Mart (Pvt) Ltd",
+    "displayName": "Acme Mart"
+  },
+  "locale": { "currency": "USD", "locale": "en-US", "timezone": "UTC", "dateFormat": "yyyy-MM-dd" },
+  "branding": {
+    "primaryColor": "#0F766E",
+    "accentColor": "#F59E0B",
+    "logo": "assets/logo.svg",
+    "receiptFooter": "Thank you!"
+  },
+  "tax": {
+    "pricesIncludeTax": true,
+    "rates": [{ "code": "STD", "name": "Standard", "ratePercent": 18 }],
+    "defaultRateCode": "STD"
+  },
+  "paymentMethods": [
+    { "code": "cash", "label": "Cash", "type": "cash", "enabled": true },
+    {
+      "code": "card",
+      "label": "Card",
+      "type": "card_external",
+      "enabled": true,
+      "requiresReference": true
+    }
+  ],
+  "outlets": [
+    { "code": "MAIN", "name": "Main Store", "registers": [{ "code": "R1", "name": "Till 1" }] }
+  ],
+  "modules": { "inventory": true, "customers": true, "discounts": true, "multiOutlet": false },
+  "receipt": { "paperWidthMm": 80, "showTaxBreakdown": true, "showCashierName": true },
+  "admin": { "email": "owner@acmemart.example", "name": "Store Owner" }
+}

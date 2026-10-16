@@ -264,6 +264,7 @@ The builder is a private Payload app used only by the platform owner. It stores 
 | `users` | Owner account(s) with TOTP secret |
 | `clients` | Client records |
 | `client-configs` | Versioned configs: client, version, config JSON, createdBy |
+| `logos` | Branding logos uploaded in the wizard: client, content-addressed path, type, size, checksum, file; append-only, kept in the database so every config version stays buildable |
 | `builds` | Build jobs: client, configVersion, templateVersion, status, zipKey, checksum, logsUrl |
 | `licences` | Issued licences: client, payload, signature, expiresAt, revokedAt |
 | `audit-log` | Every action with actor and timestamp |
@@ -274,7 +275,7 @@ One script, `scripts/build-client.ts`, turns a config into a zip; it runs identi
 
 **Pipeline steps**
 
-1. Workflow receives `buildId` and a signed token from the builder; fetches the config version and licence from the builder API.
+1. Workflow receives `buildId` and a signed token from the builder; fetches the config version, its logo and the licence from the builder API.
 2. Checks out the POS template at the requested git tag and installs dependencies with a frozen lockfile.
 3. Validates the config with the shared schema; fails the build on any error.
 4. Writes `client.config.json` and copies branding assets (logo, icons, PWA manifest) into the POS app.
@@ -318,7 +319,7 @@ acme-mart-pos-v1.0.0-c3.zip
 - No secrets in the zip: only `.env.example`.
 - Avoid native modules (no `sharp`) so one zip runs on Linux, macOS and Windows; images are resized client-side before upload.
 - The required Node.js version is pinned in `.nvmrc` and stated in `README.txt`.
-- Upgrades: stop the app, replace everything except `.env`, start it; migrations run automatically.
+- Upgrades: stop the app, replace everything except `.env` and `licence-status.json`, start it; migrations run automatically.
 
 ## Security and IP protection
 
@@ -330,12 +331,16 @@ Source code and setup logic stay in the builder and the private repo; a delivere
 - Builds ship no TypeScript source, tests or source maps; the server bundle is obfuscated.
 - `licence.json` holds client ID, allowed hosts, modules, max registers, issued and expiry dates, signed with Ed25519.
 - The POS embeds only the public key; it verifies the signature, expiry and host on startup and every 24 hours.
+- Licences run for a trial (1 month), 3 months or 12 months. Renewing issues a new licence that supersedes the old one; licences are never edited.
+- Each check also posts `licence.json` to the builder's `/api/licence-check`, which answers with a signed status: active, revoked, or superseded with the newer licence attached. The POS installs renewals itself and stops on revocation. Answers older than 10 minutes are rejected, so they cannot be replayed.
+- If the builder cannot be reached, the POS keeps working for 7 days from the last signed "active" answer (or the licence's issue date), warning in the admin, then stops. Answers are stored in `licence-status.json`; they are signed, so editing the file cannot extend the grace, and a stored revocation survives restarts.
+- Builds embed the builder's URL for the check-in; a build without it (e.g. `--dev-licence`) checks offline only.
 - Modules not in the licence stay disabled even if enabled in settings; registers beyond `maxRegisters` cannot open shifts.
 - Every client signs a software licence agreement forbidding copying, reverse engineering and redistribution.
 
 **Builder security**
 
-- Owner-only access with 2FA, rate limiting, optional IP allowlist and full audit log.
+- Owner-only access with 2FA, rate limiting, optional IP allowlist and full audit log. The licence check-in is the only route open to any address; a licence signed by the builder is its credential.
 - The licence signing key, GitHub token and R2 credentials are held as environment secrets, never in the database.
 - Builder-to-workflow and workflow-to-builder calls are authenticated with short-lived HMAC-signed tokens.
 - Build downloads use 15-minute signed URLs; the R2 bucket is private.
@@ -429,61 +434,62 @@ kiln/
 
 The MVP is seven milestones, each ending in something that runs; the build pipeline works from the terminal (M4) before any builder UI exists (M5). Dates are not set yet.
 
-**M0 — Foundation**
+**M0 — Foundation** — done
 
-- [ ] Monorepo with pnpm workspaces, Turborepo, TypeScript strict, ESLint, Prettier
-- [ ] `apps/pos` from the Payload blank template on PostgreSQL; local Postgres via Docker Compose for development only
-- [ ] CI workflow: lint, typecheck, unit tests
-- [ ] `CLAUDE.md`, `.nvmrc`, README
+- [x] Monorepo with pnpm workspaces, Turborepo, TypeScript strict, ESLint, Prettier
+- [x] `apps/pos` from the Payload blank template on PostgreSQL; local Postgres via Docker Compose for development only
+- [x] CI workflow: lint, typecheck, unit tests
+- [x] `CLAUDE.md`, `.nvmrc`, README
 
 Exit: `pnpm dev` starts the POS admin locally; CI is green.
 
-**M1 — Client config and pricing packages**
+**M1 — Client config and pricing packages** — done
 
-- [ ] `packages/client-config`: Zod schema, types, example configs, validation tests
-- [ ] `packages/pricing`: line totals, discounts, tax inclusive and exclusive, rounding, refunds, with full unit tests
-- [ ] `packages/licence`: payload type, sign and verify, with tests
+- [x] `packages/client-config`: Zod schema, types, example configs, validation tests
+- [x] `packages/pricing`: line totals, discounts, tax inclusive and exclusive, rounding, refunds, with full unit tests
+- [x] `packages/licence`: payload type, sign and verify, with tests
 
 Exit: all three packages published inside the workspace with full test coverage of pricing.
 
-**M2 — POS data model and first boot**
+**M2 — POS data model and first boot** — done
 
-- [ ] All collections and globals from the data model, with access control
-- [ ] Storage adapter selected by `STORAGE_DRIVER`
-- [ ] `prodMigrations` wired; initial migration generated
-- [ ] First-boot seeding from `client.config.json`; first admin with forced password change
-- [ ] Licence verification on startup and daily
+- [x] All collections and globals from the data model, with access control
+- [x] Storage adapter selected by `STORAGE_DRIVER`
+- [x] `prodMigrations` wired; initial migration generated
+- [x] First-boot seeding from `client.config.json`; first admin with forced password change
+- [x] Licence verification on startup and daily
 
 Exit: a fresh database plus a config file produces a seeded, licensed POS admin.
 
-**M3 — Checkout, payments, shifts, refunds**
+**M3 — Checkout, payments, shifts, refunds** — done
 
-- [ ] Cashier screen: login, PIN switch, product grid, search, barcode input, cart, discounts
-- [ ] Shift open, cash movements, shift close with variance
-- [ ] `finalise-sale` endpoint with transaction, stock decrement and sale numbering
-- [ ] Split payments, change calculation, external card confirmation
-- [ ] Browser receipt at 58 and 80 mm, reprint
-- [ ] Refunds with manager approval and restock
-- [ ] Reports with CSV export
-- [ ] Playwright end-to-end test of a full trading day
+- [x] Cashier screen: login, PIN switch, product grid, search, barcode input, cart, discounts
+- [x] Shift open, cash movements, shift close with variance
+- [x] `finalise-sale` endpoint with transaction, stock decrement and sale numbering
+- [x] Split payments, change calculation, external card confirmation
+- [x] Browser receipt at 58 and 80 mm, reprint
+- [x] Refunds with manager approval and restock
+- [x] Reports with CSV export
+- [x] Playwright end-to-end test of a full trading day
 
 Exit: the end-to-end test opens a shift, sells, refunds and closes the shift with correct totals.
 
-**M4 — Build script (config in, zip out)**
+**M4 — Build script (config in, zip out)** — done
 
-- [ ] `scripts/build-client.ts`: validate, inject config and assets, standalone build, obfuscate, licence, package, zip, checksum
-- [ ] Start scripts, `.env.example`, `README.txt`
-- [ ] Verify the zip runs on a clean Linux machine and a clean Windows machine with only Node.js and PostgreSQL
+- [x] `scripts/build-client.ts`: validate, inject config and assets, standalone build, obfuscate, licence, package, zip, checksum
+- [x] Start scripts, `.env.example`, `README.txt`
+- [x] Verify the zip runs on a clean Linux machine and a clean Windows machine with only Node.js and PostgreSQL
 
 Exit: one command turns an example config into a zip that runs on both platforms.
 
-**M5 — Builder app and remote builds**
+**M5 — Builder app and remote builds** — in progress
 
-- [ ] `apps/builder` with owner login, TOTP 2FA, rate limiting, audit log
-- [ ] Clients, setup wizard, versioned configs with diff
-- [ ] Licence issuing, renewal, revocation
-- [ ] `build-client.yml` workflow triggered via the GitHub API with signed callbacks
-- [ ] R2 upload, build history, 15-minute signed download links
+- [x] `apps/builder` with owner login, TOTP 2FA, rate limiting, audit log
+- [x] Clients, setup wizard, versioned configs with diff
+- [x] Licence issuing, renewal, revocation, with daily POS check-in
+- [x] `build-client.yml` workflow triggered via the GitHub API with signed callbacks
+- [x] R2 upload, build history, 15-minute signed download links
+- [x] Branding logo upload in the setup wizard
 
 Exit: from the browser, create a client, run the wizard, click Build and download a working zip.
 
@@ -514,7 +520,7 @@ These are deliberately deferred; none blocks M0–M4.
 **Open questions**
 
 - [ ] Product name and licence agreement wording
-- [ ] Licence checks: offline only, or also an online check-in with a grace period?
+- [x] Licence checks: offline only, or also an online check-in with a grace period? Decided: daily online check-in with the builder and a 7-day grace period (see Security and IP protection)
 - [ ] Pricing model for clients: one-time licence, subscription, or per register
 - [ ] Tax rules needed by the first clients: single rate only, or multiple and compound taxes?
 - [ ] Receipt printers the first clients use, and whether browser printing is acceptable on them

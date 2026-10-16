@@ -55,7 +55,9 @@ TypeScript (strict) · Next.js App Router · Payload CMS 3 · PostgreSQL (`@payl
 ## Code conventions
 
 - Business logic lives in `packages/*` as pure functions with unit tests. Endpoints and UI call into it.
-- `packages/pricing` keeps 100% unit test coverage.
+- `packages/pricing` keeps 100% unit test coverage (enforced by its Vitest thresholds).
+- Library packages compile with `tsc` to `dist/`; `exports` point `types` at `src/` and `default` at `dist/`. Turbo builds them before dependent `dev`, `test` and `build` tasks.
+- Import licence signing only from `@kiln/licence/sign` (builder) and verification only from `@kiln/licence/verify` (POS); the root `@kiln/licence` entry has no crypto.
 - Validate all external input (config files, request bodies) with Zod.
 - Cashier UI lives under `apps/pos/src/app/(pos)/` and must work with keyboard and barcode scanner alone; touch targets at least 44 px.
 - Prefer small, focused modules; no barrel files that pull server code into client bundles.
@@ -64,6 +66,7 @@ TypeScript (strict) · Next.js App Router · Payload CMS 3 · PostgreSQL (`@payl
 
 - `main` is production; `dev` is the integration branch.
 - Start every task on a new branch created from `dev`, and merge it back into `dev` when done.
+- Delete the task branch after it has been merged.
 - Merge `dev` into `main` only when the features in `dev` should go to production.
 - Branch names: `feat/<topic>`, `fix/<topic>`, `refactor/<topic>`, `docs/<topic>`, `test/<topic>`, `perf/<topic>` — plain, human-readable names based on the task.
 - Commits follow Conventional Commits using `feat`, `fix`, `refactor`, `docs`, `test`, `perf`. Do not use `chore` unless explicitly asked.
@@ -83,10 +86,12 @@ pnpm build                   # build all apps and packages
 pnpm lint                    # ESLint
 pnpm typecheck               # tsc --noEmit across workspaces (turbo task: check-types)
 pnpm test                    # Vitest tests (POS integration tests need the database)
-pnpm test:e2e                # Playwright end-to-end tests
+pnpm test:e2e                # Playwright e2e: own server on :3100 and a fresh <db>_e2e database; stop pnpm dev first
 pnpm format                  # Prettier write; format:check in CI
 pnpm --filter pos payload migrate:create <name>   # generate a migration after schema changes
-pnpm build:client --config <path/to/client.config.json>   # build a client zip locally (M4)
+pnpm licence:dev             # throwaway localhost licence + public key for development
+pnpm licence:keygen          # new builder licence signing key (LICENCE_SIGNING_KEY); printed, never written
+pnpm build:client --config <client.config.json> --dev-licence   # client zip from HEAD into dist-clients/ (README: Client builds)
 ```
 
 Local development uses PostgreSQL via `docker compose up -d db` (development only; client deliveries do not use Docker).
@@ -98,15 +103,35 @@ Local development uses PostgreSQL via `docker compose up -d db` (development onl
 | `DATABASE_URI` | PostgreSQL connection string |
 | `PAYLOAD_SECRET` | At least 32 random bytes |
 | `INITIAL_ADMIN_PASSWORD` | First-boot admin password; forced change on first login |
-| `STORAGE_DRIVER` | `r2` or `vercel-blob` |
+| `STORAGE_DRIVER` | `r2` or `vercel-blob`; unset in development stores media on local disk, and a production server refuses to start without one |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Media storage when `STORAGE_DRIVER=r2` |
 | `BLOB_READ_WRITE_TOKEN` | Media storage when `STORAGE_DRIVER=vercel-blob` |
+| `CLIENT_CONFIG_PATH` | Optional; defaults to `client.config.json` in the working directory |
 | `PUBLIC_URL` | Base URL; must match the licence's allowed hosts |
+| `LICENCE_PATH` | Optional; defaults to `licence.json` in the working directory |
+| `LICENCE_PUBLIC_KEY` | Development only (from `pnpm licence:dev`); production uses the key embedded in `src/lib/licence-public-key.ts` |
+| `LICENCE_SERVER_URL` | Development only: builder URL for the daily licence check-in; production uses the URL embedded at build time (empty means offline-only checks) |
 | `PORT` | Defaults to 3000 |
+
+## Environment variables (builder)
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URI` | PostgreSQL connection string |
+| `PAYLOAD_SECRET` | At least 32 random bytes; also seals owners' TOTP secrets, so rotating it forces TOTP re-enrolment |
+| `BUILDER_OWNER_EMAIL`, `BUILDER_OWNER_PASSWORD` | First boot creates this owner when there is none (password ≥ 16 characters); TOTP is set up on first sign-in |
+| `BUILDER_IP_ALLOWLIST` | Optional addresses/CIDR ranges (BR-03); read from `x-real-ip`/`x-forwarded-for`, so only behind a proxy that sets them. `/api/licence-check` and the build workflow's `/api/builds/:id/job` and `/callback` are always open (each has its own credential) |
+| `BUILDER_PUBLIC_URL` | The builder's public base URL: where the build workflow calls back and client builds check their licence in |
+| `GITHUB_TOKEN`, `GITHUB_REPOSITORY` | Fine-grained token (Actions read/write, Contents read) and `owner/name` for dispatching `build-client.yml` (BR-20); builds are unavailable without them |
+| `GITHUB_WORKFLOW_FILE`, `GITHUB_WORKFLOW_REF` | Optional; default `build-client.yml` on `main` |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | The private build bucket (BR-23): the builder checks each uploaded zip and signs 15-minute download links. A read-only R2 token is enough; builds and downloads are unavailable without them |
+| `LICENCE_SIGNING_KEY` | Ed25519 PKCS #8 PEM from `pnpm licence:keygen` (BR-31); required in production. Losing it means existing builds cannot be renewed; replacing it means rebuilding every client |
+
+Builder sign-in goes only through `POST /api/auth/sign-in` (password + TOTP); Payload's own login, forgot/reset-password, first-user creation and GraphQL are disabled.
 
 ## Current status
 
-Milestone M0 (foundation). Roadmap: M0 foundation → M1 config, pricing and licence packages → M2 POS data model and first boot → M3 checkout, payments, shifts, refunds → M4 build script → M5 builder app and remote builds → M6 hardening and first client readiness.
+Milestones M0 (foundation), M1 (`client-config`, `pricing`, `licence` packages) M2 (POS data model, storage, migrations, first-boot seeding, licence checks) M3 (shifts, checkout, payments, refunds, receipts, reports, cashier screen) and M4 (scripts/build-client.ts, client-build workflow) are done; next is M5. Roadmap: M0 foundation → M1 config, pricing and licence packages → M2 POS data model and first boot → M3 checkout, payments, shifts, refunds → M4 build script → M5 builder app and remote builds → M6 hardening and first client readiness.
 
 ## Out of scope for the MVP
 
