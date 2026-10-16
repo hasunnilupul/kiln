@@ -111,6 +111,44 @@ describe('issuing (BR-30, BR-31)', () => {
     })
   })
 
+  it('explains a missing or malformed signing key instead of failing blindly', async () => {
+    const key = process.env.LICENCE_SIGNING_KEY
+    try {
+      delete process.env.LICENCE_SIGNING_KEY
+      expect(await issue(client)).toMatchObject({
+        status: 503,
+        body: {
+          error: {
+            code: 'licence_key_not_configured',
+            message: expect.stringContaining('is not set'),
+          },
+        },
+      })
+      // Only the base64 body, as when the PEM header and footer are left out.
+      process.env.LICENCE_SIGNING_KEY = generateLicenceKeyPair()
+        .privateKeyPem.split('\n')
+        .filter((line) => line && !line.startsWith('-----'))
+        .join('')
+      expect(await issue(client)).toMatchObject({
+        status: 503,
+        body: {
+          error: {
+            code: 'licence_key_not_configured',
+            message: expect.stringContaining('-----BEGIN PRIVATE KEY-----'),
+          },
+        },
+      })
+      process.env.LICENCE_SIGNING_KEY =
+        '-----BEGIN PRIVATE KEY-----\nbm90IGEga2V5\n-----END PRIVATE KEY-----'
+      expect(await issue(client)).toMatchObject({
+        status: 503,
+        body: { error: { message: expect.stringContaining('not a usable Ed25519 private key') } },
+      })
+    } finally {
+      process.env.LICENCE_SIGNING_KEY = key
+    }
+  })
+
   it('rejects bad hosts and register counts', async () => {
     expect(await issue(client, { allowedHosts: ['https://pos.example.com'] })).toMatchObject({
       status: 400,
