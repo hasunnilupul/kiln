@@ -4,7 +4,12 @@ import QRCode from 'qrcode'
 import { z } from 'zod'
 
 import { writeAudit } from '../hooks/audit'
-import { SIGN_IN_CONTEXT, TotpEnrolmentRequired, type SignInContext } from '../hooks/totp-login'
+import {
+  SIGN_IN_CONTEXT,
+  TotpCodeRequired,
+  TotpEnrolmentRequired,
+  type SignInContext,
+} from '../hooks/totp-login'
 import { clientIp } from '../lib/client-ip'
 import {
   LOGIN_ATTEMPT_RETENTION_MS,
@@ -78,10 +83,11 @@ async function recordFailure(
 }
 
 /**
- * `POST /api/auth/sign-in`: email, password and TOTP code (BR-01), at most 5 failures per 15 minutes
- * per IP and per account (BR-02). On the first sign-in of an owner without an authenticator, a
- * correct password returns an `enrol` challenge (QR code and token) instead; signing in again with
- * the token and the app's first code completes enrolment and signs in.
+ * `POST /api/auth/sign-in`: email and password, then the TOTP code (BR-01), with at most 5 failures
+ * per 15 minutes per IP and per account (BR-02). A correct password without a code returns
+ * `{ codeRequired: true }`; the form then asks for the code and sends all three again. For an owner
+ * without an authenticator, a correct password returns an `enrol` challenge (QR code and token)
+ * instead; signing in again with the token and the app's first code enrols and signs in.
  */
 export const signIn = jsonEndpoint({
   method: 'post',
@@ -97,7 +103,7 @@ export const signIn = jsonEndpoint({
         data: { email: body.email },
       })
       throw new ApiError(429, 'too_many_attempts', 'Too many failed sign-ins. Try again later.', {
-        'Retry-After': String(LOGIN_WINDOW_MS / 1000),
+        headers: { 'Retry-After': String(LOGIN_WINDOW_MS / 1000) },
       })
     }
 
@@ -122,6 +128,10 @@ export const signIn = jsonEndpoint({
         context: { [SIGN_IN_CONTEXT]: context },
       })
     } catch (error) {
+      if (error instanceof TotpCodeRequired) {
+        // Not a failure: the password was right and no code was sent yet.
+        return { codeRequired: true }
+      }
       if (error instanceof TotpEnrolmentRequired) {
         return enrolmentChallenge(req, error.userId, body.email)
       }

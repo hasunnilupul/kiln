@@ -6,8 +6,9 @@ import React from 'react'
 import { SignInForm } from './SignInForm'
 
 /**
- * Replaces Payload's login view: email, password and TOTP code, posted to `/api/auth/sign-in`
- * (BR-01). Payload's own login route refuses every request, so this is the only way in.
+ * Replaces Payload's login view: email and password, then the TOTP code once they are accepted,
+ * posted to `/api/auth/sign-in` (BR-01). Payload's own login route refuses every request, so
+ * this is the only way in.
  */
 export function SignInView({ initPageResult, searchParams }: AdminViewServerProps) {
   const { req } = initPageResult

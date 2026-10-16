@@ -151,8 +151,24 @@ describe('signing in with a code', () => {
   // The enrolment used the current time step; the authenticator's next code is one step ahead.
   const nextCode = () => totpCode(secret, Date.now() + 30_000)
 
-  it('refuses a missing or wrong code even with the right password', async () => {
-    expect(await attempt(owner)).toMatchObject({ status: 401 })
+  it('asks for the code only after the password is accepted, without a session', async () => {
+    const countFailures = () =>
+      payload
+        .count({ collection: 'login-attempts', where: { email: { equals: owner.email } } })
+        .then((result) => result.totalDocs)
+    const before = await countFailures()
+    const result = await attempt(owner)
+    expect(result).toMatchObject({ status: 200, body: { codeRequired: true } })
+    expect(result.headers.get('set-cookie')).toBeNull()
+    expect(await countFailures()).toBe(before)
+
+    expect(await attempt(owner, { password: 'wrong-password' })).toMatchObject({
+      status: 401,
+      body: { error: { code: 'invalid_credentials' } },
+    })
+  })
+
+  it('refuses a wrong code even with the right password', async () => {
     expect(await attempt(owner, { code: '000000' })).toMatchObject({ status: 401 })
   })
 

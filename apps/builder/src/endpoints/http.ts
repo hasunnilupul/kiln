@@ -7,14 +7,21 @@ import type { User } from '../payload-types'
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
+  readonly details?: unknown
   readonly headers?: Record<string, string>
 
-  constructor(status: number, code: string, message: string, headers?: Record<string, string>) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    options: { details?: unknown; headers?: Record<string, string> } = {},
+  ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
-    this.headers = headers
+    this.details = options.details
+    this.headers = options.headers
   }
 }
 
@@ -76,7 +83,7 @@ function errorResponse(req: PayloadRequest, error: unknown): Response {
   ) => Response.json({ error: { code, message, details } }, { status, headers })
 
   if (error instanceof ApiError) {
-    return reply(error.status, error.code, error.message, undefined, error.headers)
+    return reply(error.status, error.code, error.message, error.details, error.headers)
   }
   if (error instanceof z.ZodError) {
     return reply(400, 'invalid_request', 'The request is invalid', z.flattenError(error))

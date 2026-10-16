@@ -23,6 +23,14 @@ export interface SignInContext {
   enrol?: { userId: number; secret: string }
 }
 
+/** The password was right; the owner now has to enter the code from their authenticator. */
+export class TotpCodeRequired extends Error {
+  constructor() {
+    super('TOTP code required')
+    this.name = 'TotpCodeRequired'
+  }
+}
+
 /** The password was right, but the owner has no authenticator yet and must enrol one. */
 export class TotpEnrolmentRequired extends Error {
   readonly userId: number
@@ -73,6 +81,9 @@ export const checkTotpOnLogin: CollectionBeforeLoginHook = async ({ req, user })
   } else {
     throw new TotpEnrolmentRequired(user.id)
   }
+
+  // Credentials first, code second: an empty code after a correct password asks for the code.
+  if (signIn.code.trim() === '') throw new TotpCodeRequired()
 
   const step = verifyTotp(secret, signIn.code, { lastUsedStep: user.totpLastStep })
   if (step === null) throw new AuthenticationError(req.t)
